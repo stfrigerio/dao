@@ -1,0 +1,40 @@
+{
+	"name": "dao-frontend",
+	"version": "0.1.0",
+	"private": true,
+	"dependencies": {
+		"framer-motion": "^12.38.0",
+		"lucide-react": "^0.555.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"react-markdown": "^10.1.0",
+		"react-router-dom": "^7.6.0",
+		"zustand": "^5.0.7"
+	},
+	"devDependencies": {
+		"@types/react": "^18.3.1",
+		"@types/react-dom": "^18.3.1",
+		"@typescript-eslint/eslint-plugin": "^8.46.2",
+		"@typescript-eslint/parser": "^8.46.2",
+		"@vitejs/plugin-react": "^5.1.0",
+		"eslint": "^9.38.0",
+		"eslint-plugin-unused-imports": "^4.3.0",
+		"glob": "^11.0.3",
+		"prettier": "^3.6.2",
+		"serve": "^14.2.4",
+		"typescript": "^5.9.3",
+		"vite": "^7.1.12",
+		"vite-tsconfig-paths": "^5.1.4"
+	},
+	"scripts": {
+		"dev": "vite",
+		"start:prod": "serve -s build -l 3001",
+		"build": "npm run check && vite build",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint \"src/**/*.{ts,tsx}\"",
+		"lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+		"check": "node scripts/check-api-usage.js && node scripts/check-css-modules.js && npm run format:check && npm run lint && npm run typecheck",
+		"format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+		"format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
+	}
+}

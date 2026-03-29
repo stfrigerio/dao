@@ -1,0 +1,353 @@
+.panel {
+	background-color: var(--color-background-secondary);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-xl);
+	overflow: hidden;
+}
+
+.panelHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing-lg) var(--spacing-xl);
+	border-bottom: 1px solid var(--color-border);
+}
+
+.panelTitle {
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-text);
+	margin: 0;
+}
+
+.agentButton {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 14px;
+	background: transparent;
+	color: var(--color-primary);
+	border: 1px solid var(--color-primary);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+	text-transform: uppercase;
+	position: relative;
+}
+
+.agentButton::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: var(--color-primary);
+	opacity: 0;
+	transition: opacity var(--transition-fast);
+}
+
+.agentButton:hover:not(:disabled) {
+	color: var(--color-text-inverse);
+	box-shadow: var(--glow-primary);
+}
+
+.agentButton:hover:not(:disabled)::before {
+	opacity: 1;
+}
+
+.agentButton:hover:not(:disabled) svg,
+.agentButton:hover:not(:disabled) span {
+	position: relative;
+}
+
+.agentButton > * {
+	position: relative;
+}
+
+.agentButton:disabled {
+	opacity: 0.6;
+	cursor: default;
+	color: var(--color-text-muted);
+	border-color: var(--color-text-muted);
+}
+
+.agentButton:disabled::before {
+	display: none;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.spin {
+	animation: spin 1.2s linear infinite;
+}
+
+.panelBody {
+	padding: var(--spacing-xl);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xl);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-sm);
+}
+
+.sectionLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-text-muted);
+	text-transform: uppercase;
+	letter-spacing: var(--letter-spacing-wider);
+}
+
+.sectionHeaderRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.addButton {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px var(--spacing-sm);
+	background: none;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-xs);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.addButton:hover {
+	border-color: var(--color-primary);
+	color: var(--color-primary);
+}
+
+.empty {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
+	margin: 0;
+}
+
+/* Objectives */
+
+.questionsButton {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	background: transparent;
+	color: var(--color-accent);
+	border: 1px solid var(--color-accent);
+	font-family: var(--font-family-mono);
+	font-size: 10px;
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+	opacity: 0;
+	flex-shrink: 0;
+}
+
+.objectiveRow:hover .questionsButton {
+	opacity: 1;
+}
+
+.questionsButton:hover:not(:disabled) {
+	background: var(--color-accent);
+	color: #000;
+	box-shadow: var(--glow-accent);
+}
+
+.questionsButton:disabled {
+	opacity: 0.6 !important;
+	cursor: default;
+}
+
+.objectiveList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.objectiveItem {
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	overflow: hidden;
+	transition: border-color var(--transition-fast);
+}
+
+.objectiveDone {
+	border-color: var(--color-success);
+	opacity: 0.7;
+}
+
+.objectiveRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	padding: var(--spacing-sm) var(--spacing-sm);
+	cursor: pointer;
+	user-select: none;
+}
+
+.chevron {
+	color: var(--color-text-muted);
+	flex-shrink: 0;
+	transition: color var(--transition-fast);
+}
+
+.objectiveRow:hover .chevron {
+	color: var(--color-text-secondary);
+}
+
+.objectiveName {
+	flex: 1;
+	font-size: var(--font-size-sm);
+	color: var(--color-text);
+}
+
+.deleteButton {
+	background: none;
+	border: none;
+	color: var(--color-text-muted);
+	cursor: pointer;
+	padding: 2px;
+	display: flex;
+	align-items: center;
+	opacity: 0;
+	transition: all var(--transition-fast);
+}
+
+.objectiveRow:hover .deleteButton,
+.taskRow:hover .deleteButton {
+	opacity: 1;
+}
+
+.deleteButton:hover {
+	color: var(--color-danger, #e53e3e);
+}
+
+/* Tasks */
+
+.taskList {
+	border-top: 1px solid var(--color-border);
+	padding: var(--spacing-xs) var(--spacing-sm);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	background-color: var(--color-background);
+}
+
+.taskRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	padding: 3px var(--spacing-xs);
+	border-radius: var(--radius-sm);
+}
+
+.taskRow:hover {
+	background-color: var(--color-background-secondary);
+}
+
+.taskDone .taskName {
+	text-decoration: line-through;
+	color: var(--color-text-muted);
+}
+
+.taskName {
+	flex: 1;
+	font-size: var(--font-size-sm);
+	color: var(--color-text-secondary);
+}
+
+.checkButton {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 2px;
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.checkDone {
+	color: var(--color-success);
+}
+.checkTodo {
+	color: var(--color-text-muted);
+}
+
+.addTaskButton {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	background: none;
+	border: none;
+	color: var(--color-text-muted);
+	font-size: var(--font-size-xs);
+	cursor: pointer;
+	padding: 4px var(--spacing-xs);
+	margin-top: 2px;
+	transition: color var(--transition-fast);
+}
+
+.addTaskButton:hover {
+	color: var(--color-primary);
+}
+
+/* Inline add rows */
+
+.newRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	margin-top: var(--spacing-xs);
+}
+
+.newInput {
+	flex: 1;
+	padding: var(--spacing-xs) var(--spacing-sm);
+	border: 1px solid var(--color-primary);
+	border-radius: var(--radius-sm);
+	background-color: var(--color-background);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	outline: none;
+}
+
+.saveButton {
+	padding: var(--spacing-xs) var(--spacing-md);
+	background-color: var(--color-primary);
+	color: var(--color-text-inverse);
+	border: none;
+	border-radius: var(--radius-sm);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.taskSummary {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	margin: 0;
+}

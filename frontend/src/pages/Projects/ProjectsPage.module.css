@@ -1,0 +1,217 @@
+.page {
+	width: 100%;
+}
+
+.header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	margin-bottom: var(--spacing-xl);
+	gap: var(--spacing-md);
+}
+
+.title {
+	font-size: var(--font-size-3xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+	margin-bottom: var(--spacing-xs);
+}
+
+.subtitle {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-secondary);
+	margin: 0;
+}
+
+.newButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	padding: var(--spacing-sm) var(--spacing-md);
+	background-color: var(--color-primary);
+	color: var(--color-text-inverse);
+	border: none;
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background-color var(--transition-fast);
+}
+
+.newButton:hover {
+	background-color: var(--color-primary-hover);
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-md);
+	margin-bottom: var(--spacing-xl);
+	flex-wrap: wrap;
+}
+
+.searchWrapper {
+	position: relative;
+	flex: 1;
+	min-width: 200px;
+}
+
+.searchIcon {
+	position: absolute;
+	left: var(--spacing-sm);
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--color-text-muted);
+	pointer-events: none;
+}
+
+.searchInput {
+	width: 100%;
+	padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 32px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background-color: var(--color-background-secondary);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	outline: none;
+	transition: border-color var(--transition-fast);
+}
+
+.searchInput:focus {
+	border-color: var(--color-border-focus);
+}
+
+.filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+}
+
+.filterIcon {
+	color: var(--color-text-muted);
+}
+
+.select {
+	padding: var(--spacing-sm) var(--spacing-md);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background-color: var(--color-background-secondary);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+	outline: none;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: var(--spacing-md);
+}
+
+.card {
+	background-color: var(--color-background-secondary);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: var(--spacing-lg);
+	display: block;
+	transition: all var(--transition-fast);
+}
+
+.card:hover {
+	border-color: var(--color-primary);
+	box-shadow: var(--shadow-md);
+}
+
+.cardHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing-sm);
+	margin-bottom: var(--spacing-sm);
+}
+
+.cardName {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-text);
+}
+
+.cardDescription {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-secondary);
+	margin-bottom: var(--spacing-md);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.cardFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing-sm);
+}
+
+.cardDate {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+}
+
+.typeBadge {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	padding: 2px var(--spacing-sm);
+	border-radius: var(--radius-full);
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.type-professional {
+	background-color: var(--color-info-light);
+	color: var(--color-info);
+}
+
+.type-personal {
+	background-color: var(--color-success-bg);
+	color: var(--color-success);
+}
+
+.archivedBadge {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	background-color: var(--color-background-tertiary);
+	padding: 2px var(--spacing-sm);
+	border-radius: var(--radius-full);
+}
+
+.loading {
+	color: var(--color-text-secondary);
+}
+
+.emptyState {
+	text-align: center;
+	padding: var(--spacing-4xl) 0;
+	color: var(--color-text-secondary);
+}
+
+.emptyState p {
+	margin-bottom: var(--spacing-md);
+}
+
+.emptyButton {
+	padding: var(--spacing-sm) var(--spacing-xl);
+	background-color: var(--color-primary);
+	color: var(--color-text-inverse);
+	border: none;
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition: background-color var(--transition-fast);
+}
+
+.emptyButton:hover {
+	background-color: var(--color-primary-hover);
+}

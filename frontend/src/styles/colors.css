@@ -1,0 +1,81 @@
+/* 道 — Cyberpunk Brutalist */
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root {
+	/* Primary — Chinese red / neon crimson */
+	--color-primary: #e6001a;
+	--color-primary-hover: #ff1f35;
+	--color-primary-active: #b30015;
+	--color-primary-light: #ff4d5e;
+	--color-primary-lighter: #1a0003;
+
+	/* Secondary */
+	--color-secondary: #c8c8c8;
+	--color-secondary-hover: #e0e0e0;
+	--color-secondary-active: #aaaaaa;
+	--color-secondary-light: #888888;
+	--color-secondary-lighter: #555555;
+
+	/* Accent — electric cyan */
+	--color-accent: #00e5ff;
+	--color-accent-hover: #33eeff;
+	--color-accent-active: #00b8cc;
+
+	/* Success */
+	--color-success: #00ff88;
+	--color-success-hover: #00cc6e;
+	--color-success-active: #009950;
+	--color-success-light: #003318;
+	--color-success-bg: #001a0c;
+
+	/* Error */
+	--color-error: #e6001a;
+	--color-error-hover: #ff1f35;
+	--color-error-active: #b30015;
+	--color-error-light: #1a0003;
+	--color-error-bg: #0d0001;
+
+	/* Warning */
+	--color-warning: #ffaa00;
+	--color-warning-hover: #ffbb33;
+	--color-warning-active: #cc8800;
+	--color-warning-light: #1a1100;
+	--color-warning-bg: #0d0900;
+
+	/* Info */
+	--color-info: #00e5ff;
+	--color-info-hover: #33eeff;
+	--color-info-active: #00b8cc;
+	--color-info-light: #001a1f;
+	--color-info-bg: #000d10;
+
+	/* Backgrounds */
+	--color-background: #050505;
+	--color-background-secondary: #0a0a0a;
+	--color-background-tertiary: #111111;
+
+	/* Text */
+	--color-text: #e8e8e8;
+	--color-text-secondary: #999999;
+	--color-text-tertiary: #666666;
+	--color-text-muted: #444444;
+	--color-text-inverse: #050505;
+
+	/* Borders */
+	--color-border: #1e1e1e;
+	--color-border-hover: #333333;
+	--color-border-focus: #e6001a;
+
+	/* Shadows — neon glow */
+	--shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.8);
+	--shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.8);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.9);
+	--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.9);
+	--shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.95);
+	--shadow-2xl: 0 24px 60px rgba(0, 0, 0, 1);
+	--shadow-inner: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+
+	/* Neon glows */
+	--glow-primary: 0 0 8px rgba(230, 0, 26, 0.6), 0 0 20px rgba(230, 0, 26, 0.2);
+	--glow-accent: 0 0 8px rgba(0, 229, 255, 0.5), 0 0 20px rgba(0, 229, 255, 0.15);
+}

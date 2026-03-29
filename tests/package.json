@@ -1,0 +1,22 @@
+{
+	"name": "dao-tests",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "node --experimental-vm-modules node_modules/.bin/jest --runInBand --forceExit",
+		"test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch --runInBand --forceExit"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"puppeteer": "^24.0.0",
+		"jest": "^29.0.0",
+		"@jest/globals": "^29.0.0"
+	},
+	"jest": {
+		"testEnvironment": "node",
+		"testMatch": ["**/*.test.js"],
+		"testTimeout": 30000,
+		"transform": {}
+	}
+}

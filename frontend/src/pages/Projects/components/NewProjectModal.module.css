@@ -1,0 +1,158 @@
+.backdrop {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: var(--z-index-modal);
+	padding: var(--spacing-md);
+}
+
+.modal {
+	background-color: var(--color-background-secondary);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-xl);
+	width: 100%;
+	max-width: 480px;
+	box-shadow: var(--shadow-2xl);
+}
+
+.modalHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing-lg) var(--spacing-xl);
+	border-bottom: 1px solid var(--color-border);
+}
+
+.modalTitle {
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-text);
+	margin: 0;
+}
+
+.closeButton {
+	background: none;
+	border: none;
+	color: var(--color-text-muted);
+	cursor: pointer;
+	padding: var(--spacing-xs);
+	border-radius: var(--radius-sm);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all var(--transition-fast);
+}
+
+.closeButton:hover {
+	background-color: var(--color-background-tertiary);
+	color: var(--color-text);
+}
+
+.form {
+	padding: var(--spacing-xl);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-lg);
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.label {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-text);
+}
+
+.input,
+.textarea {
+	padding: var(--spacing-sm) var(--spacing-md);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background-color: var(--color-background);
+	color: var(--color-text);
+	font-size: var(--font-size-base);
+	outline: none;
+	transition: border-color var(--transition-fast);
+	resize: vertical;
+}
+
+.input:focus,
+.textarea:focus {
+	border-color: var(--color-border-focus);
+}
+
+.typeToggle {
+	display: flex;
+	gap: var(--spacing-xs);
+}
+
+.typeButton {
+	flex: 1;
+	padding: var(--spacing-sm) var(--spacing-md);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background-color: var(--color-background);
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.typeButtonActive {
+	background-color: var(--color-primary);
+	color: var(--color-text-inverse);
+	border-color: var(--color-primary);
+}
+
+.actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing-sm);
+	padding-top: var(--spacing-sm);
+}
+
+.cancelButton {
+	padding: var(--spacing-sm) var(--spacing-lg);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background: none;
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.cancelButton:hover {
+	background-color: var(--color-background-tertiary);
+	color: var(--color-text);
+}
+
+.createButton {
+	padding: var(--spacing-sm) var(--spacing-lg);
+	background-color: var(--color-primary);
+	color: var(--color-text-inverse);
+	border: none;
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition: background-color var(--transition-fast);
+}
+
+.createButton:hover:not(:disabled) {
+	background-color: var(--color-primary-hover);
+}
+
+.createButton:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
