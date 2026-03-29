@@ -204,11 +204,14 @@ export async function runDocumentationProductionAgent(
 
 				const content = await runClaude(prompt);
 
+				const h1Match = content.match(/^#\s+(.+)$/m);
+				const docName = h1Match ? h1Match[1].trim() : task.name;
+
 				await db.insert(documents).values({
 					projectId: project.id,
 					phaseId: phase.id,
 					objectiveId: objective.id,
-					name: task.name,
+					name: docName,
 					content,
 					type: 'note',
 					createdBy: userId,

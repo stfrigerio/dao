@@ -2,9 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import styles from './GlitchText.module.css';
 
 interface GlitchState {
-	x1: number; y1: number; clip1: string;
-	x2: number; y2: number; clip2: string;
-	x3: number; clip3: string;
+	x1: number;
+	y1: number;
+	clip1: string;
+	x2: number;
+	y2: number;
+	clip2: string;
+	x3: number;
+	clip3: string;
 	flicker: boolean;
 }
 
@@ -16,9 +21,14 @@ function randomClip() {
 
 function randomState(): GlitchState {
 	return {
-		x1: Math.random() * 14 - 7, y1: Math.random() * 4 - 2, clip1: randomClip(),
-		x2: Math.random() * 14 - 7, y2: Math.random() * 4 - 2, clip2: randomClip(),
-		x3: Math.random() * 6 - 3,  clip3: randomClip(),
+		x1: Math.random() * 14 - 7,
+		y1: Math.random() * 4 - 2,
+		clip1: randomClip(),
+		x2: Math.random() * 14 - 7,
+		y2: Math.random() * 4 - 2,
+		clip2: randomClip(),
+		x3: Math.random() * 6 - 3,
+		clip3: randomClip(),
 		flicker: Math.random() < 0.3,
 	};
 }
@@ -41,11 +51,14 @@ export function GlitchText({ children, className, as: Tag = 'span' }: GlitchText
 			setActive(true);
 			intervalId = setInterval(() => setState(randomState), 50);
 
-			const stop = setTimeout(() => {
-				setActive(false);
-				clearInterval(intervalId);
-				schedule();
-			}, 250 + Math.random() * 200);
+			const stop = setTimeout(
+				() => {
+					setActive(false);
+					clearInterval(intervalId);
+					schedule();
+				},
+				250 + Math.random() * 200
+			);
 			timers.current.push(stop);
 		}
 

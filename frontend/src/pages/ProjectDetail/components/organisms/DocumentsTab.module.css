@@ -88,6 +88,19 @@
 	color: var(--color-text);
 }
 
+.docNameInput {
+	flex: 1;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-text);
+	background: var(--color-background);
+	border: 1px solid var(--color-primary);
+	border-radius: var(--radius-sm);
+	padding: 1px 6px;
+	outline: none;
+	min-width: 0;
+}
+
 .reviewedBadge {
 	display: inline-flex;
 	align-items: center;

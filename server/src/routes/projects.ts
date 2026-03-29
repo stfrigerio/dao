@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, lt } from 'drizzle-orm';
 import { db } from '../db';
-import { projects, projectMembers, users, phases } from '../db/schema';
+import { projects, projectMembers, users, phases, objectives, documents } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -125,12 +125,54 @@ router.put('/:uuid', requireAuth, async (req: AuthRequest, res) => {
 		if (currentPhaseUuid === null) {
 			updates.currentPhaseId = null;
 		} else {
-			const [phase] = await db.select().from(phases).where(eq(phases.uuid, currentPhaseUuid));
-			if (!phase) {
+			const [project] = await db.select().from(projects).where(eq(projects.uuid, uuid));
+			if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+
+			const [targetPhase] = await db.select().from(phases).where(eq(phases.uuid, currentPhaseUuid));
+			if (!targetPhase) {
 				res.status(404).json({ error: 'Phase not found' });
 				return;
 			}
-			updates.currentPhaseId = phase.id;
+
+			// Gate check: advancing forward requires prior phases to be clean
+			const currentPhase = project.currentPhaseId
+				? (await db.select().from(phases).where(eq(phases.id, project.currentPhaseId)))[0]
+				: null;
+
+			const advancing = !currentPhase || targetPhase.orderIndex > currentPhase.orderIndex;
+
+			if (advancing) {
+				const priorPhases = await db
+					.select()
+					.from(phases)
+					.where(and(eq(phases.projectId, project.id), lt(phases.orderIndex, targetPhase.orderIndex)));
+
+				for (const prior of priorPhases) {
+					const incomplete = await db
+						.select()
+						.from(objectives)
+						.where(and(eq(objectives.phaseId, prior.id), eq(objectives.completed, false)));
+					if (incomplete.length > 0) {
+						res.status(422).json({
+							error: `Phase "${prior.name}" has ${incomplete.length} incomplete objective${incomplete.length > 1 ? 's' : ''}`,
+						});
+						return;
+					}
+
+					const unreviewed = await db
+						.select()
+						.from(documents)
+						.where(and(eq(documents.phaseId, prior.id), eq(documents.humanReviewed, false)));
+					if (unreviewed.length > 0) {
+						res.status(422).json({
+							error: `Phase "${prior.name}" has ${unreviewed.length} unreviewed document${unreviewed.length > 1 ? 's' : ''}`,
+						});
+						return;
+					}
+				}
+			}
+
+			updates.currentPhaseId = targetPhase.id;
 		}
 	}
 

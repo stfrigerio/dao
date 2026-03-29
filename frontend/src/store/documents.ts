@@ -22,6 +22,7 @@ interface DocumentState {
 		data: { name: string; content?: string; type?: string; phaseId?: number }
 	) => Promise<Document>;
 	updateDocument: (docUuid: string, content: string, projectUuid: string) => Promise<void>;
+	renameDocument: (docUuid: string, name: string, projectUuid: string) => Promise<void>;
 	reviewDocument: (docUuid: string, projectUuid: string, reviewed: boolean) => Promise<void>;
 	deleteDocument: (docUuid: string, projectUuid: string) => Promise<void>;
 	invalidate: (projectUuid: string) => void;
@@ -76,6 +77,24 @@ export const useDocumentStore = create<DocumentState>()(
 					method: 'PATCH',
 					headers: getHeaders(),
 					body: JSON.stringify({ content }),
+				});
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				const updated: Document = await res.json();
+				set((state) => ({
+					documents: {
+						...state.documents,
+						[projectUuid]: (state.documents[projectUuid] || []).map((d) =>
+							d.uuid === docUuid ? updated : d
+						),
+					},
+				}));
+			},
+
+			renameDocument: async (docUuid, name, projectUuid) => {
+				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+					method: 'PATCH',
+					headers: getHeaders(),
+					body: JSON.stringify({ name }),
 				});
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 				const updated: Document = await res.json();

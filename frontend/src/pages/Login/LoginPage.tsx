@@ -7,10 +7,10 @@ import styles from './LoginPage.module.css';
 
 const PALETTE_TINTS: Record<string, string> = {
 	amber: '#ff9500',
-	red:   '#ff2020',
+	red: '#ff2020',
 	green: '#39ff62',
 	white: '#c8c8c8',
-	blue:  '#80b4ff',
+	blue: '#80b4ff',
 };
 
 export function LoginPage() {

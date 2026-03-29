@@ -53,14 +53,15 @@ router.post('/projects/:uuid/documents', requireAuth, async (req: AuthRequest, r
 // PATCH /documents/:uuid
 router.patch('/documents/:uuid', requireAuth, async (req: AuthRequest, res) => {
 	const uuid = req.params['uuid'] as string;
-	const { content, humanReviewed } = req.body;
-	if (content === undefined && humanReviewed === undefined) {
-		res.status(400).json({ error: 'content or humanReviewed required' });
+	const { content, humanReviewed, name } = req.body;
+	if (content === undefined && humanReviewed === undefined && name === undefined) {
+		res.status(400).json({ error: 'content, humanReviewed, or name required' });
 		return;
 	}
 	const update: Record<string, unknown> = {};
 	if (content !== undefined) update.content = content;
 	if (humanReviewed !== undefined) update.humanReviewed = humanReviewed;
+	if (name !== undefined) update.name = name;
 	const [doc] = await db
 		.update(documents)
 		.set(update)

@@ -187,7 +187,12 @@ export const useProjectStore = create<ProjectState>()(
 					headers: getHeaders(),
 					body: JSON.stringify({ currentPhaseUuid: phaseUuid }),
 				});
-				if (!response.ok) return false;
+				if (!response.ok) {
+					const body = await response.json().catch(() => ({}));
+					const msg = body?.error ?? 'Failed to update phase';
+					set({ error: msg });
+					return false;
+				}
 				const updated: Project = await response.json();
 				set((state) => ({
 					items: state.items.map((p) =>

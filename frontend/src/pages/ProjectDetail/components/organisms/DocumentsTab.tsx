@@ -13,28 +13,66 @@ interface DocumentsTabProps {
 	project: Project;
 }
 
-function DocCard({
-	doc,
-	projectUuid,
-}: {
-	doc: Document;
-	projectUuid: string;
-}) {
-	const { updateDocument, reviewDocument, deleteDocument } = useDocumentStore();
+function DocCard({ doc, projectUuid }: { doc: Document; projectUuid: string }) {
+	const { updateDocument, renameDocument, reviewDocument, deleteDocument } = useDocumentStore();
 	const [expanded, setExpanded] = useState(false);
+	const [editingName, setEditingName] = useState(false);
+	const [nameDraft, setNameDraft] = useState(doc.name);
+
+	const commitRename = async () => {
+		const trimmed = nameDraft.trim();
+		if (trimmed && trimmed !== doc.name) {
+			await renameDocument(doc.uuid, trimmed, projectUuid);
+		} else {
+			setNameDraft(doc.name);
+		}
+		setEditingName(false);
+	};
 
 	return (
 		<div className={`${styles.card} ${doc.humanReviewed ? styles.cardReviewed : ''}`}>
 			<div className={styles.cardHeader}>
-				<div className={styles.cardExpand} onClick={() => setExpanded((v) => !v)}>
+				<div
+					className={styles.cardExpand}
+					onClick={() => !editingName && setExpanded((v) => !v)}
+				>
 					<FileText size={14} className={styles.docIcon} />
-					<span className={styles.docName}>{doc.name}</span>
+					{editingName ? (
+						<input
+							className={styles.docNameInput}
+							value={nameDraft}
+							autoFocus
+							onChange={(e) => setNameDraft(e.target.value)}
+							onBlur={commitRename}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') commitRename();
+								if (e.key === 'Escape') {
+									setNameDraft(doc.name);
+									setEditingName(false);
+								}
+							}}
+							onClick={(e) => e.stopPropagation()}
+						/>
+					) : (
+						<span
+							className={styles.docName}
+							onDoubleClick={(e) => {
+								e.stopPropagation();
+								setNameDraft(doc.name);
+								setEditingName(true);
+							}}
+						>
+							{doc.name}
+						</span>
+					)}
 					{doc.humanReviewed && (
 						<span className={styles.reviewedBadge}>
 							<ShieldCheck size={11} /> REVIEWED
 						</span>
 					)}
-					<span className={styles.docMeta}>{new Date(doc.createdAt).toLocaleDateString()}</span>
+					<span className={styles.docMeta}>
+						{new Date(doc.createdAt).toLocaleDateString()}
+					</span>
 					{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
 				</div>
 				<button
@@ -80,7 +118,9 @@ export function DocumentsTab({ project }: DocumentsTabProps) {
 	const { objectives, fetchObjectives } = useObjectiveStore();
 
 	const projectDocs = documents[project.uuid] || [];
-	const projectPhases = (phases[project.uuid] || []).slice().sort((a, b) => a.orderIndex - b.orderIndex);
+	const projectPhases = (phases[project.uuid] || [])
+		.slice()
+		.sort((a, b) => a.orderIndex - b.orderIndex);
 
 	useEffect(() => {
 		fetchDocuments(project.uuid);

@@ -173,7 +173,11 @@ void main() {
 
 function hexToRgb(hex: string): [number, number, number] {
 	let h = hex.replace('#', '').trim();
-	if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+	if (h.length === 3)
+		h = h
+			.split('')
+			.map((c) => c + c)
+			.join('');
 	const num = parseInt(h, 16);
 	return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255];
 }
@@ -264,7 +268,13 @@ export function FaultyTerminal({
 			fragment: fragmentShader,
 			uniforms: {
 				iTime: { value: 0 },
-				iResolution: { value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height) },
+				iResolution: {
+					value: new Color(
+						gl.canvas.width,
+						gl.canvas.height,
+						gl.canvas.width / gl.canvas.height
+					),
+				},
 				uScale: { value: scale },
 				uGridMul: { value: new Float32Array(gridMul) },
 				uDigitSize: { value: digitSize },
@@ -346,9 +356,27 @@ export function FaultyTerminal({
 			loadAnimationStartRef.current = 0;
 			timeOffsetRef.current = Math.random() * 100;
 		};
-	}, [dpr, pause, timeScale, scale, gridMul, digitSize, scanlineIntensity, glitchAmount,
-		flickerAmount, noiseAmp, chromaticAberration, ditherValue, curvature, tintVec,
-		mouseReact, mouseStrength, pageLoadAnimation, brightness, handleMouseMove]);
+	}, [
+		dpr,
+		pause,
+		timeScale,
+		scale,
+		gridMul,
+		digitSize,
+		scanlineIntensity,
+		glitchAmount,
+		flickerAmount,
+		noiseAmp,
+		chromaticAberration,
+		ditherValue,
+		curvature,
+		tintVec,
+		mouseReact,
+		mouseStrength,
+		pageLoadAnimation,
+		brightness,
+		handleMouseMove,
+	]);
 
 	return (
 		<div

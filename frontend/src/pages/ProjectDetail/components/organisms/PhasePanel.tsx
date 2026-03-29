@@ -20,6 +20,7 @@ import { useObjectiveStore } from '@/store/objectives';
 import { useAgentJobStore, type AnalysisResult } from '@/store/agentJobs';
 import { useDocumentStore } from '@/store/documents';
 import { useProjectStore } from '@/store/projects';
+import { useToastStore } from '@/store/toast';
 import { Badge } from '@/components/atoms/Badge/Badge';
 import { EmptyState } from '@/components/atoms/EmptyState/EmptyState';
 import { Modal } from '@/components/atoms/Modal/Modal';
@@ -55,7 +56,8 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		analysisJobs,
 	} = useAgentJobStore();
 	const { documents, fetchDocuments, createDocument, updateDocument } = useDocumentStore();
-	const { setCurrentPhase } = useProjectStore();
+	const { setCurrentPhase, error: projectError, clearError } = useProjectStore();
+	const toast = useToastStore();
 
 	const isDiscoveryPhase = phase.orderIndex === 0;
 	const isCurrentPhase = project.currentPhaseUuid === phase.uuid;
@@ -161,9 +163,18 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 				<div className={styles.panelActions}>
 					<button
 						className={`${styles.pinButton} ${isCurrentPhase ? styles.pinButtonActive : ''}`}
-						onClick={() =>
-							setCurrentPhase(project.uuid, isCurrentPhase ? null : phase.uuid)
-						}
+						onClick={async () => {
+							const ok = await setCurrentPhase(
+								project.uuid,
+								isCurrentPhase ? null : phase.uuid
+							);
+							if (!ok) {
+								const msg =
+									useProjectStore.getState().error ?? 'Cannot advance phase';
+								toast.error(msg);
+								clearError();
+							}
+						}}
 						aria-label={isCurrentPhase ? 'unset current phase' : 'set as current phase'}
 					>
 						<MapPin size={12} />
@@ -196,6 +207,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 					<Callout
 						type="abstract"
 						title="Project Brief"
+						defaultOpen={false}
 						actions={
 							<>
 								<button

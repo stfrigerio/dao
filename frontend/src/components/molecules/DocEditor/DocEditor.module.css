@@ -87,13 +87,13 @@
 
 .textarea {
 	flex: 1;
-	min-height: 0;
+	min-height: 720px;
 	width: 100%;
 	padding: var(--spacing-lg);
 	background: var(--color-background);
 	border: none;
 	outline: none;
-	resize: none;
+	resize: vertical;
 	font-family: var(--font-family-mono);
 	font-size: var(--font-size-sm);
 	line-height: 1.7;
@@ -105,7 +105,7 @@
 
 .preview {
 	flex: 1;
-	min-height: 0;
+	min-height: 720px;
 	overflow-y: auto;
 	padding: var(--spacing-lg) var(--spacing-xl);
 	background: var(--color-background);
