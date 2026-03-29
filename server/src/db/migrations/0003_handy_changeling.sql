@@ -1,0 +1,2 @@
+ALTER TABLE "documents" ADD COLUMN "objective_id" integer;--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_objective_id_objectives_id_fk" FOREIGN KEY ("objective_id") REFERENCES "public"."objectives"("id") ON DELETE set null ON UPDATE no action;

@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { FolderKanban, Activity, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useProjectStore } from '@/store/projects';
+import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import styles from './DashboardPage.module.css';
 
 export function DashboardPage() {
 	const { user } = useAuthStore();
 	const { items: projects, loading, fetchAll } = useProjectStore();
+
+	useBreadcrumb([{ label: 'Dashboard' }]);
 
 	useEffect(() => {
 		fetchAll();

@@ -1,20 +1,25 @@
 .page {
+	position: relative;
 	min-height: 100vh;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	background-color: var(--color-background);
 	padding: var(--spacing-md);
+	overflow: hidden;
+}
+
+.page > :global(canvas) {
+	position: absolute;
+	inset: 0;
 }
 
 .card {
-	background-color: var(--color-background-secondary);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-xl);
+	position: relative;
+	z-index: 1;
 	padding: var(--spacing-2xl);
 	width: 100%;
 	max-width: 400px;
-	box-shadow: var(--shadow-xl);
 }
 
 .header {
@@ -23,15 +28,20 @@
 }
 
 .logo {
-	font-size: var(--font-size-4xl);
+	font-size: 7rem;
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary);
-	margin-bottom: var(--spacing-xs);
+	margin: 0 0 var(--spacing-xs);
+	line-height: 1;
 }
 
 .subtitle {
-	font-size: var(--font-size-sm);
-	color: var(--color-text-secondary);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-widest, 0.3em);
+	text-transform: uppercase;
+	color: var(--color-text-muted);
 	margin: 0;
 }
 

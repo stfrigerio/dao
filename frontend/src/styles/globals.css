@@ -5,7 +5,7 @@
 }
 
 html {
-	font-size: 16px;
+	font-size: 21px;
 }
 
 body {
@@ -16,9 +16,27 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 	line-height: var(--line-height-normal);
 	background-image:
-		linear-gradient(rgba(230, 0, 26, 0.015) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(230, 0, 26, 0.015) 1px, transparent 1px);
+		linear-gradient(var(--grid-line-color) 1px, transparent 1px),
+		linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px);
 	background-size: 40px 40px;
+}
+
+/* CRT overlay — scanlines + phosphor vignette */
+body::after {
+	content: '';
+	position: fixed;
+	inset: 0;
+	background:
+		radial-gradient(ellipse at 50% 40%, transparent 45%, rgba(0, 0, 0, 0.6) 100%),
+		repeating-linear-gradient(
+			0deg,
+			transparent,
+			transparent 2px,
+			rgba(0, 0, 0, 0.07) 2px,
+			rgba(0, 0, 0, 0.07) 4px
+		);
+	pointer-events: none;
+	z-index: 9999;
 }
 
 code {
@@ -83,7 +101,7 @@ p {
 	margin-bottom: var(--spacing-md);
 }
 
-/* Focus visible — neon red outline */
+/* Focus visible — amber phosphor outline */
 :focus-visible {
 	outline: 1px solid var(--color-primary);
 	outline-offset: 2px;

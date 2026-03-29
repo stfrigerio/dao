@@ -6,23 +6,6 @@
 	color: var(--color-text-secondary);
 }
 
-.breadcrumb {
-	margin-bottom: var(--spacing-md);
-}
-
-.backLink {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing-xs);
-	font-size: var(--font-size-sm);
-	color: var(--color-text-secondary);
-	transition: color var(--transition-fast);
-}
-
-.backLink:hover {
-	color: var(--color-primary);
-}
-
 .header {
 	display: flex;
 	align-items: flex-start;

@@ -2,9 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useToastStore } from '@/store/toast';
+import { useThemeStore, type Palette } from '@/store/theme';
 import { getAuthToken } from '@/store/authToken';
+import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import type { User } from '../../../../shared/types';
 import styles from './SettingsPage.module.css';
+
+const PALETTES: { id: Palette; label: string; color: string; bg: string }[] = [
+	{ id: 'red', label: 'Red', color: '#ff2020', bg: '#050101' },
+	{ id: 'amber', label: 'Amber', color: '#ff9500', bg: '#010200' },
+	{ id: 'green', label: 'Green', color: '#39ff62', bg: '#010401' },
+	{ id: 'white', label: 'White', color: '#c8c8c8', bg: '#010101' },
+	{ id: 'blue', label: 'Blue', color: '#80b4ff', bg: '#000105' },
+];
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -18,6 +28,9 @@ const getHeaders = () => {
 export function SettingsPage() {
 	const { user } = useAuthStore();
 	const toast = useToastStore();
+	const { palette, setPalette } = useThemeStore();
+
+	useBreadcrumb([{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }]);
 	const [users, setUsers] = useState<User[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [showNewUser, setShowNewUser] = useState(false);
@@ -101,6 +114,31 @@ export function SettingsPage() {
 							{user?.role}
 						</span>
 					</div>
+				</div>
+			</section>
+
+			<section className={styles.section}>
+				<h2 className={styles.sectionTitle}>Display</h2>
+				<p className={styles.sectionDesc}>CRT phosphor color</p>
+				<div className={styles.paletteGrid}>
+					{PALETTES.map((p) => (
+						<button
+							key={p.id}
+							className={`${styles.paletteSwatch} ${palette === p.id ? styles.paletteSwatchActive : ''}`}
+							onClick={() => setPalette(p.id)}
+						>
+							<span
+								className={styles.palettePreview}
+								style={{ background: p.bg, borderColor: p.color }}
+							>
+								<span
+									style={{ background: p.color }}
+									className={styles.paletteDot}
+								/>
+							</span>
+							<span className={styles.paletteLabel}>{p.label}</span>
+						</button>
+					))}
 				</div>
 			</section>
 

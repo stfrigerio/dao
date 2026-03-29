@@ -50,6 +50,29 @@ router.post('/projects/:uuid/documents', requireAuth, async (req: AuthRequest, r
 	res.status(201).json(doc);
 });
 
+// PATCH /documents/:uuid
+router.patch('/documents/:uuid', requireAuth, async (req: AuthRequest, res) => {
+	const uuid = req.params['uuid'] as string;
+	const { content, humanReviewed } = req.body;
+	if (content === undefined && humanReviewed === undefined) {
+		res.status(400).json({ error: 'content or humanReviewed required' });
+		return;
+	}
+	const update: Record<string, unknown> = {};
+	if (content !== undefined) update.content = content;
+	if (humanReviewed !== undefined) update.humanReviewed = humanReviewed;
+	const [doc] = await db
+		.update(documents)
+		.set(update)
+		.where(eq(documents.uuid, uuid))
+		.returning();
+	if (!doc) {
+		res.status(404).json({ error: 'Document not found' });
+		return;
+	}
+	res.json(doc);
+});
+
 // DELETE /documents/:uuid
 router.delete('/documents/:uuid', requireAuth, async (req: AuthRequest, res) => {
 	const uuid = req.params['uuid'] as string;

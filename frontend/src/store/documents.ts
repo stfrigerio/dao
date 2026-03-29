@@ -17,6 +17,13 @@ interface DocumentState {
 	loading: boolean;
 	error: string | null;
 	fetchDocuments: (projectUuid: string) => Promise<void>;
+	createDocument: (
+		projectUuid: string,
+		data: { name: string; content?: string; type?: string; phaseId?: number }
+	) => Promise<Document>;
+	updateDocument: (docUuid: string, content: string, projectUuid: string) => Promise<void>;
+	reviewDocument: (docUuid: string, projectUuid: string, reviewed: boolean) => Promise<void>;
+	deleteDocument: (docUuid: string, projectUuid: string) => Promise<void>;
 	invalidate: (projectUuid: string) => void;
 }
 
@@ -45,6 +52,75 @@ export const useDocumentStore = create<DocumentState>()(
 						error: error instanceof Error ? error.message : 'Unknown error',
 					});
 				}
+			},
+
+			createDocument: async (projectUuid, data) => {
+				const res = await fetch(`${API_BASE_URL}/projects/${projectUuid}/documents`, {
+					method: 'POST',
+					headers: getHeaders(),
+					body: JSON.stringify(data),
+				});
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				const doc: Document = await res.json();
+				set((state) => ({
+					documents: {
+						...state.documents,
+						[projectUuid]: [...(state.documents[projectUuid] || []), doc],
+					},
+				}));
+				return doc;
+			},
+
+			updateDocument: async (docUuid, content, projectUuid) => {
+				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+					method: 'PATCH',
+					headers: getHeaders(),
+					body: JSON.stringify({ content }),
+				});
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				const updated: Document = await res.json();
+				set((state) => ({
+					documents: {
+						...state.documents,
+						[projectUuid]: (state.documents[projectUuid] || []).map((d) =>
+							d.uuid === docUuid ? updated : d
+						),
+					},
+				}));
+			},
+
+			reviewDocument: async (docUuid, projectUuid, reviewed) => {
+				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+					method: 'PATCH',
+					headers: getHeaders(),
+					body: JSON.stringify({ humanReviewed: reviewed }),
+				});
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				const updated: Document = await res.json();
+				set((state) => ({
+					documents: {
+						...state.documents,
+						[projectUuid]: (state.documents[projectUuid] || []).map((d) =>
+							d.uuid === docUuid ? updated : d
+						),
+					},
+				}));
+			},
+
+			deleteDocument: async (docUuid, projectUuid) => {
+				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+					method: 'DELETE',
+					headers: getHeaders(),
+				});
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				set((state) => ({
+					documents: {
+						...state.documents,
+						[projectUuid]: (state.documents[projectUuid] || []).filter(
+							(d) => d.uuid !== docUuid
+						),
+					},
+				}));
 			},
 
 			invalidate: (projectUuid) => {

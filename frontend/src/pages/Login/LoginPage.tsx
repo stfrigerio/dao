@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
+import { useThemeStore } from '@/store/theme';
+import { FaultyTerminal } from '@/components/atoms/FaultyTerminal/FaultyTerminal';
 import styles from './LoginPage.module.css';
+
+const PALETTE_TINTS: Record<string, string> = {
+	amber: '#ff9500',
+	red:   '#ff2020',
+	green: '#39ff62',
+	white: '#c8c8c8',
+	blue:  '#80b4ff',
+};
 
 export function LoginPage() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const { login, loading, error, clearError } = useAuthStore();
+	const { palette } = useThemeStore();
 	const navigate = useNavigate();
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -18,10 +29,21 @@ export function LoginPage() {
 
 	return (
 		<div className={styles.page}>
+			<FaultyTerminal
+				tint={PALETTE_TINTS[palette] ?? '#ff9500'}
+				brightness={0.35}
+				curvature={0.15}
+				glitchAmount={2}
+				flickerAmount={1.2}
+				scanlineIntensity={1.1}
+				chromaticAberration={1.5}
+				noiseAmp={0.6}
+				mouseReact
+			/>
 			<div className={styles.card}>
 				<div className={styles.header}>
 					<h1 className={styles.logo}>道</h1>
-					<p className={styles.subtitle}>Sign in to your workspace</p>
+					<p className={styles.subtitle}>the way</p>
 				</div>
 
 				<form className={styles.form} onSubmit={handleSubmit}>

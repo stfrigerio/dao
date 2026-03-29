@@ -21,6 +21,7 @@ export const projects = pgTable('projects', {
 	ownerId: integer('owner_id').references(() => users.id),
 	linearTeamId: text('linear_team_id'),
 	linearProjectId: text('linear_project_id'),
+	currentPhaseId: integer('current_phase_id'),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -87,10 +88,12 @@ export const documents = pgTable('documents', {
 		.references(() => projects.id, { onDelete: 'cascade' })
 		.notNull(),
 	phaseId: integer('phase_id').references(() => phases.id),
+	objectiveId: integer('objective_id').references(() => objectives.id, { onDelete: 'set null' }),
 	name: text('name').notNull(),
 	content: text('content'),
 	type: text('type').notNull().default('note'), // 'note' | 'file' | 'link'
 	url: text('url'),
 	createdBy: integer('created_by').references(() => users.id),
+	humanReviewed: boolean('human_reviewed').notNull().default(false),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

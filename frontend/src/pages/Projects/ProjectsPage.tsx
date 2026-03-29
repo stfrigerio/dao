@@ -5,12 +5,15 @@ import { useProjectStore } from '@/store/projects';
 import { useToastStore } from '@/store/toast';
 import type { ProjectType, ProjectStatus } from '../../../../shared/types';
 import { DEFAULT_PHASES } from '../../../../shared/types';
+import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import { NewProjectModal } from './components/NewProjectModal';
 import styles from './ProjectsPage.module.css';
 
 export function ProjectsPage() {
 	const { items: projects, loading, fetchAll, upsert, invalidateCache } = useProjectStore();
 	const toast = useToastStore();
+
+	useBreadcrumb([{ label: 'Dashboard', to: '/dashboard' }, { label: 'Projects' }]);
 	const [showNewModal, setShowNewModal] = useState(false);
 	const [search, setSearch] = useState('');
 	const [typeFilter, setTypeFilter] = useState<ProjectType | 'all'>('all');

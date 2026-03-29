@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronRight, Circle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, Circle, CircleDot } from 'lucide-react';
 import type { Project, Phase } from '../../../../../../shared/types';
 import { PhasePanel } from './PhasePanel';
 import styles from './PhaseBoard.module.css';
@@ -10,8 +10,24 @@ interface PhaseBoardProps {
 }
 
 export function PhaseBoard({ project, phases }: PhaseBoardProps) {
-	const [selectedPhase, setSelectedPhase] = useState<Phase | null>(null);
 	const sorted = [...phases].sort((a, b) => a.orderIndex - b.orderIndex);
+
+	const [selectedPhase, setSelectedPhase] = useState<Phase | null>(() => {
+		if (!sorted.length) return null;
+		return sorted.find((p) => p.uuid === project.currentPhaseUuid) ?? sorted[0];
+	});
+
+	// Re-sync when phases or currentPhaseUuid changes (e.g. after fetch or update)
+	useEffect(() => {
+		if (!sorted.length) return;
+		setSelectedPhase((prev) => {
+			if (prev) {
+				const still = sorted.find((p) => p.uuid === prev.uuid);
+				if (still) return still;
+			}
+			return sorted.find((p) => p.uuid === project.currentPhaseUuid) ?? sorted[0];
+		});
+	}, [phases, project.currentPhaseUuid]);
 
 	return (
 		<div className={styles.wrapper}>
@@ -27,7 +43,11 @@ export function PhaseBoard({ project, phases }: PhaseBoardProps) {
 							}
 						>
 							<div className={styles.phaseHeader}>
-								<Circle size={16} className={styles.phaseIcon} />
+								{phase.uuid === project.currentPhaseUuid ? (
+									<CircleDot size={16} className={styles.phaseIconCurrent} />
+								) : (
+									<Circle size={16} className={styles.phaseIcon} />
+								)}
 								<span className={styles.phaseName}>{phase.name}</span>
 							</div>
 							{phase.description && (

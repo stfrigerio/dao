@@ -18,16 +18,19 @@
 }
 
 .logo {
-	padding: 0 var(--spacing-lg) var(--spacing-xl);
+	padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
 	border-bottom: 1px solid var(--color-border);
 	margin-bottom: var(--spacing-md);
+	display: flex;
+	justify-content: center;
 }
 
 .logoText {
-	font-size: var(--font-size-xl);
+	font-size: 3.2rem;
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary);
 	letter-spacing: var(--letter-spacing-tight);
+	line-height: 1;
 }
 
 .navItems {
@@ -114,6 +117,20 @@
 .logoutButton:hover {
 	background-color: var(--color-error-bg);
 	color: var(--color-error);
+}
+
+.content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.topBar {
+	flex-shrink: 0;
+	padding: var(--spacing-md) var(--spacing-xl);
+	border-bottom: 1px solid var(--color-border);
+	background: var(--color-background);
 }
 
 .main {

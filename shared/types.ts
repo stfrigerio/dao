@@ -25,6 +25,7 @@ export interface Project {
 	ownerId: number | null;
 	linearTeamId: string | null;
 	linearProjectId: string | null;
+	currentPhaseUuid: string | null;
 	createdAt: string;
 	updatedAt: string;
 	// Computed
@@ -83,11 +84,13 @@ export interface Document {
 	uuid: string;
 	projectId: number;
 	phaseId: number | null;
+	objectiveId: number | null;
 	name: string;
 	content: string | null;
 	type: DocumentType;
 	url: string | null;
 	createdBy: number | null;
+	humanReviewed: boolean;
 	createdAt: string;
 }
 

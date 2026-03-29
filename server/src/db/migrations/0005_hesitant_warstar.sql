@@ -1,0 +1,1 @@
+ALTER TABLE "documents" ADD COLUMN "human_reviewed" boolean DEFAULT false NOT NULL;

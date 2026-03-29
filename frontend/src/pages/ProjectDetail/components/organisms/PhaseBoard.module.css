@@ -45,6 +45,11 @@
 	flex-shrink: 0;
 }
 
+.phaseIconCurrent {
+	color: var(--color-primary);
+	flex-shrink: 0;
+}
+
 .phaseName {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);

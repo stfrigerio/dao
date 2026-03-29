@@ -20,6 +20,51 @@
 	margin: 0;
 }
 
+.briefHint {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
+	margin: 0 0 var(--spacing-sm);
+}
+
+.panelActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+}
+
+.pinButton {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 14px;
+	background: transparent;
+	color: var(--color-text-muted);
+	border: 1px solid var(--color-border);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+	text-transform: uppercase;
+}
+
+.pinButton:hover {
+	color: var(--color-text);
+	border-color: var(--color-text-muted);
+}
+
+.pinButtonActive {
+	color: var(--color-primary);
+	border-color: var(--color-primary);
+}
+
+.pinButtonActive:hover {
+	color: var(--color-text-muted);
+	border-color: var(--color-border);
+}
+
 .agentButton {
 	display: flex;
 	align-items: center;
@@ -151,12 +196,12 @@
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	padding: 2px 8px;
+	padding: 0.15em 0.5em;
 	background: transparent;
 	color: var(--color-accent);
 	border: 1px solid var(--color-accent);
 	font-family: var(--font-family-mono);
-	font-size: 10px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	letter-spacing: var(--letter-spacing-wider);
 	cursor: pointer;
@@ -179,6 +224,178 @@
 .questionsButton:disabled {
 	opacity: 0.6 !important;
 	cursor: default;
+}
+
+.viewQuestionsButton {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 0.15em 0.5em;
+	background: transparent;
+	color: var(--color-accent);
+	border: 1px solid var(--color-accent);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.viewQuestionsButton:hover {
+	background: var(--color-accent);
+	color: #000;
+	box-shadow: var(--glow-accent);
+}
+
+.viewQuestionsAnswered {
+	color: var(--color-success);
+	border-color: var(--color-success);
+}
+
+.viewQuestionsAnswered:hover {
+	background: var(--color-success) !important;
+	box-shadow: none !important;
+}
+
+.produceButton {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 0.15em 0.5em;
+	background: transparent;
+	color: var(--color-primary);
+	border: 1px solid var(--color-primary);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	white-space: nowrap;
+	flex-shrink: 0;
+	text-transform: uppercase;
+}
+
+.produceButton:hover:not(:disabled) {
+	background: var(--color-primary);
+	color: var(--color-text-inverse);
+	box-shadow: var(--glow-primary);
+}
+
+.produceButton:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+/* Analysis confirmation modal */
+
+.analysisBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-lg);
+	padding: var(--spacing-xl);
+}
+
+.analysisSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-sm);
+}
+
+.analysisSectionLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	text-transform: uppercase;
+	color: var(--color-text-muted);
+	margin: 0;
+}
+
+.analysisList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.analysisItemDone {
+	font-size: var(--font-size-sm);
+	color: var(--color-success);
+	padding: var(--spacing-xs) var(--spacing-sm);
+	border: 1px solid var(--color-success);
+	border-radius: var(--radius-sm);
+	opacity: 0.85;
+}
+
+.analysisItemMissing {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: var(--spacing-xs) var(--spacing-sm);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+}
+
+.analysisTaskName {
+	font-size: var(--font-size-sm);
+	color: var(--color-text);
+}
+
+.analysisReason {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+}
+
+.analysisActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing-sm);
+	padding-top: var(--spacing-md);
+	border-top: 1px solid var(--color-border);
+}
+
+.analysisCancelBtn {
+	padding: 6px 16px;
+	background: none;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-muted);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.analysisCancelBtn:hover {
+	border-color: var(--color-text-muted);
+	color: var(--color-text);
+}
+
+.analysisConfirmBtn {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	padding: 6px 16px;
+	background: var(--color-primary);
+	border: 1px solid var(--color-primary);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-inverse);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.analysisConfirmBtn:hover {
+	box-shadow: var(--glow-primary);
 }
 
 .objectiveList {
@@ -350,4 +567,41 @@
 	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 	margin: 0;
+}
+
+/* Mode toggle icons (used in Callout / Modal headers) */
+
+.modeIconBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 3px 6px;
+	background: none;
+	border: 1px solid var(--color-border);
+	color: var(--color-text-muted);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.modeIconBtn:first-child {
+	border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.modeIconBtn:last-child {
+	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+	border-left: none;
+}
+
+.modeIconBtn:hover {
+	color: var(--color-text);
+}
+
+.modeIconBtnActive {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+	color: var(--color-text-inverse);
+}
+
+.modeIconBtnActive:hover {
+	color: var(--color-text-inverse);
 }

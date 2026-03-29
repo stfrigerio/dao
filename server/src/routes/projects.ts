@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
-import { projects, projectMembers, users } from '../db/schema';
+import { projects, projectMembers, users, phases } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -10,8 +10,22 @@ const router = Router();
 router.get('/', requireAuth, async (req: AuthRequest, res) => {
 	try {
 		const all = await db
-			.select()
+			.select({
+				id: projects.id,
+				uuid: projects.uuid,
+				name: projects.name,
+				description: projects.description,
+				type: projects.type,
+				status: projects.status,
+				ownerId: projects.ownerId,
+				linearTeamId: projects.linearTeamId,
+				linearProjectId: projects.linearProjectId,
+				currentPhaseUuid: phases.uuid,
+				createdAt: projects.createdAt,
+				updatedAt: projects.updatedAt,
+			})
 			.from(projects)
+			.leftJoin(phases, eq(projects.currentPhaseId, phases.id))
 			.orderBy(projects.updatedAt);
 		res.json(all);
 	} catch {
@@ -23,14 +37,29 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
 router.get('/:uuid', requireAuth, async (req: AuthRequest, res) => {
 	const uuid = req.params['uuid'] as string;
 	try {
-		const [project] = await db
-			.select()
+		const [row] = await db
+			.select({
+				id: projects.id,
+				uuid: projects.uuid,
+				name: projects.name,
+				description: projects.description,
+				type: projects.type,
+				status: projects.status,
+				ownerId: projects.ownerId,
+				linearTeamId: projects.linearTeamId,
+				linearProjectId: projects.linearProjectId,
+				currentPhaseUuid: phases.uuid,
+				createdAt: projects.createdAt,
+				updatedAt: projects.updatedAt,
+			})
 			.from(projects)
+			.leftJoin(phases, eq(projects.currentPhaseId, phases.id))
 			.where(eq(projects.uuid, uuid));
-		if (!project) {
+		if (!row) {
 			res.status(404).json({ error: 'Project not found' });
 			return;
 		}
+		const project = row;
 
 		// Fetch members with user details
 		const members = await db
@@ -86,23 +115,49 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
 // PUT /projects/:uuid
 router.put('/:uuid', requireAuth, async (req: AuthRequest, res) => {
 	const uuid = req.params['uuid'] as string;
-	const { name, description, type, status } = req.body;
+	const { name, description, type, status, currentPhaseUuid } = req.body;
 	const updates: Partial<typeof projects.$inferInsert> = { updatedAt: new Date() };
 	if (name !== undefined) updates.name = name;
 	if (description !== undefined) updates.description = description;
 	if (type !== undefined) updates.type = type;
 	if (status !== undefined) updates.status = status;
+	if (currentPhaseUuid !== undefined) {
+		if (currentPhaseUuid === null) {
+			updates.currentPhaseId = null;
+		} else {
+			const [phase] = await db.select().from(phases).where(eq(phases.uuid, currentPhaseUuid));
+			if (!phase) {
+				res.status(404).json({ error: 'Phase not found' });
+				return;
+			}
+			updates.currentPhaseId = phase.id;
+		}
+	}
 
-	const [project] = await db
-		.update(projects)
-		.set(updates)
-		.where(eq(projects.uuid, uuid))
-		.returning();
-	if (!project) {
+	const [updated] = await db.update(projects).set(updates).where(eq(projects.uuid, uuid)).returning();
+	if (!updated) {
 		res.status(404).json({ error: 'Project not found' });
 		return;
 	}
-	res.json(project);
+	const [row] = await db
+		.select({
+			id: projects.id,
+			uuid: projects.uuid,
+			name: projects.name,
+			description: projects.description,
+			type: projects.type,
+			status: projects.status,
+			ownerId: projects.ownerId,
+			linearTeamId: projects.linearTeamId,
+			linearProjectId: projects.linearProjectId,
+			currentPhaseUuid: phases.uuid,
+			createdAt: projects.createdAt,
+			updatedAt: projects.updatedAt,
+		})
+		.from(projects)
+		.leftJoin(phases, eq(projects.currentPhaseId, phases.id))
+		.where(eq(projects.uuid, uuid));
+	res.json(row);
 });
 
 // DELETE /projects/:uuid

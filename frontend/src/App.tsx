@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { useToastStore } from '@/store/toast';
 import { ToastContainer } from '@/components/Toast/Toast';
+import { BreadcrumbProvider } from '@/context/BreadcrumbContext';
 import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/pages/Dashboard';
 import { ProjectsPage } from '@/pages/Projects';
@@ -28,31 +29,33 @@ export default function App() {
 	return (
 		<div className={styles.app}>
 			<BrowserRouter>
-				<Routes>
-					<Route path="/login" element={<LoginPage />} />
-					<Route
-						path="/*"
-						element={
-							<ProtectedRoute>
-								<AppShell>
-									<Routes>
-										<Route
-											path="/"
-											element={<Navigate to="/dashboard" replace />}
-										/>
-										<Route path="/dashboard" element={<DashboardPage />} />
-										<Route path="/projects" element={<ProjectsPage />} />
-										<Route
-											path="/projects/:uuid"
-											element={<ProjectDetailPage />}
-										/>
-										<Route path="/settings" element={<SettingsPage />} />
-									</Routes>
-								</AppShell>
-							</ProtectedRoute>
-						}
-					/>
-				</Routes>
+				<BreadcrumbProvider>
+					<Routes>
+						<Route path="/login" element={<LoginPage />} />
+						<Route
+							path="/*"
+							element={
+								<ProtectedRoute>
+									<AppShell>
+										<Routes>
+											<Route
+												path="/"
+												element={<Navigate to="/dashboard" replace />}
+											/>
+											<Route path="/dashboard" element={<DashboardPage />} />
+											<Route path="/projects" element={<ProjectsPage />} />
+											<Route
+												path="/projects/:uuid"
+												element={<ProjectDetailPage />}
+											/>
+											<Route path="/settings" element={<SettingsPage />} />
+										</Routes>
+									</AppShell>
+								</ProtectedRoute>
+							}
+						/>
+					</Routes>
+				</BreadcrumbProvider>
 			</BrowserRouter>
 			<ToastContainer toasts={toasts} removeToast={removeToast} />
 		</div>

@@ -3,7 +3,13 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { phases } from '../db/schema.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
-import { runDiscoveryAgent, runObjectiveQuestionsAgent, getJob } from '../services/agentRunner.js';
+import {
+	runDiscoveryAgent,
+	runObjectiveQuestionsAgent,
+	runDocumentationAnalysisAgent,
+	runDocumentationProductionAgent,
+	getJob,
+} from '../services/agentRunner.js';
 
 const router = Router();
 
@@ -28,6 +34,35 @@ router.post('/objectives/:uuid/generate-questions', requireAuth, async (req: Aut
 	try {
 		const objectiveUuid = req.params['uuid'] as string;
 		const jobId = await runObjectiveQuestionsAgent(objectiveUuid, req.user!.userId);
+		res.json({ jobId });
+	} catch (err) {
+		next(err);
+	}
+});
+
+// POST /objectives/:uuid/analyze-documentation
+router.post('/objectives/:uuid/analyze-documentation', requireAuth, async (req: AuthRequest, res, next) => {
+	try {
+		const jobId = await runDocumentationAnalysisAgent(req.params['uuid'] as string);
+		res.json({ jobId });
+	} catch (err) {
+		next(err);
+	}
+});
+
+// POST /objectives/:uuid/produce-documentation
+router.post('/objectives/:uuid/produce-documentation', requireAuth, async (req: AuthRequest, res, next) => {
+	try {
+		const { taskUuids } = req.body as { taskUuids: string[] };
+		if (!Array.isArray(taskUuids) || taskUuids.length === 0) {
+			res.status(400).json({ error: 'taskUuids required' });
+			return;
+		}
+		const jobId = await runDocumentationProductionAgent(
+			req.params['uuid'] as string,
+			req.user!.userId,
+			taskUuids
+		);
 		res.json({ jobId });
 	} catch (err) {
 		next(err);

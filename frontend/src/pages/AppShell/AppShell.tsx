@@ -2,6 +2,10 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FolderKanban, Settings, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { Breadcrumb } from '@/components/atoms/Breadcrumb/Breadcrumb';
+import { GlitchText } from '@/components/atoms/GlitchText/GlitchText';
+import { DecryptText } from '@/components/atoms/DecryptText/DecryptText';
+import { useBreadcrumbCrumbs } from '@/context/BreadcrumbContext';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -11,6 +15,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
 	const { user, logout } = useAuthStore();
 	const navigate = useNavigate();
+	const crumbs = useBreadcrumbCrumbs();
 
 	const handleLogout = async () => {
 		await logout();
@@ -21,7 +26,7 @@ export function AppShell({ children }: AppShellProps) {
 		<div className={styles.shell}>
 			<nav className={styles.sidebar}>
 				<div className={styles.logo}>
-					<span className={styles.logoText}>道</span>
+					<GlitchText className={styles.logoText}>道</GlitchText>
 				</div>
 
 				<div className={styles.navItems}>
@@ -32,7 +37,7 @@ export function AppShell({ children }: AppShellProps) {
 						}
 					>
 						<LayoutDashboard size={18} />
-						<span>Dashboard</span>
+						<DecryptText>Dashboard</DecryptText>
 					</NavLink>
 					<NavLink
 						to="/projects"
@@ -41,7 +46,7 @@ export function AppShell({ children }: AppShellProps) {
 						}
 					>
 						<FolderKanban size={18} />
-						<span>Projects</span>
+						<DecryptText>Projects</DecryptText>
 					</NavLink>
 				</div>
 
@@ -53,20 +58,25 @@ export function AppShell({ children }: AppShellProps) {
 						}
 					>
 						<Settings size={18} />
-						<span>Settings</span>
+						<DecryptText>Settings</DecryptText>
 					</NavLink>
 					<div className={styles.userInfo}>
-						<span className={styles.userName}>{user?.name}</span>
-						<span className={styles.userEmail}>{user?.email}</span>
+						<DecryptText className={styles.userName}>{user?.name ?? ''}</DecryptText>
+						<DecryptText className={styles.userEmail}>{user?.email ?? ''}</DecryptText>
 					</div>
 					<button className={styles.logoutButton} onClick={handleLogout}>
 						<LogOut size={16} />
-						<span>Logout</span>
+						<DecryptText>Logout</DecryptText>
 					</button>
 				</div>
 			</nav>
 
-			<main className={styles.main}>{children}</main>
+			<div className={styles.content}>
+				<header className={styles.topBar}>
+					<Breadcrumb items={crumbs} />
+				</header>
+				<main className={styles.main}>{children}</main>
+			</div>
 		</div>
 	);
 }

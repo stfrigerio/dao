@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Link2, Users, Trash2, FileText } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Link2, Users, Trash2, FileText } from 'lucide-react';
 import { useProjectStore } from '@/store/projects';
 import { usePhaseStore } from '@/store/phases';
+import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import { PhaseBoard } from './components/organisms/PhaseBoard';
 import { LinearIssuesTab } from './components/organisms/LinearIssuesTab';
 import { MembersTab } from './components/organisms/MembersTab';
@@ -20,6 +21,12 @@ export function ProjectDetailPage() {
 
 	const project = projects.find((p) => p.uuid === uuid);
 	const projectPhases = uuid ? phases[uuid] || [] : [];
+
+	useBreadcrumb([
+		{ label: 'Dashboard', to: '/dashboard' },
+		{ label: 'Projects', to: '/projects' },
+		{ label: project?.name ?? '…' },
+	]);
 
 	useEffect(() => {
 		if (uuid) {
@@ -44,13 +51,6 @@ export function ProjectDetailPage() {
 
 	return (
 		<div className={styles.page}>
-			<div className={styles.breadcrumb}>
-				<Link to="/projects" className={styles.backLink}>
-					<ArrowLeft size={16} />
-					Projects
-				</Link>
-			</div>
-
 			<div className={styles.header}>
 				<div>
 					<div className={styles.titleRow}>

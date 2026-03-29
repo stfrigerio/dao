@@ -12,13 +12,21 @@ Project management tool: projects → phases → Claude agent sessions + Linear 
 - Atomic structure: `atoms/` `molecules/` `organisms/`
 - Run `npm run check` before committing (api-usage + css-modules + prettier + lint + typecheck)
 - **Animations** — use `framer-motion` (`AnimatePresence` + `motion.div`) for expand/collapse and enter/exit transitions. No CSS `transition` on height.
-- **Componentization** — any UI pattern used in 2+ places belongs in `src/components/`. Page-specific one-offs stay in `pages/<Page>/components/`. Before building inline, check if a shared atom/molecule already exists.
+- **Componentization** — self-contained visual units (buttons, cards, form rows, modals, editors) belong in `src/components/` from the start. Pure layout/composition that is specific to one page stays in `pages/<Page>/components/`. **Before creating any new component, check whether an existing atom/molecule already covers the use case — extend it with a prop or variant rather than duplicating it.** The goal is one authoritative implementation per UI pattern, not 10 button variants living in different files.
 
 **Shared atoms** (import from `@/components/atoms/<Name>/<Name>`):
 | Component | Use for |
 |---|---|
 | `Badge` | Progress counters, role labels, type chips — variants: `default` `primary` `success` `warning` `error` `accent` |
+| `Breadcrumb` | Page breadcrumb trail — accepts `items: Crumb[]`; use `useBreadcrumb(items)` in each page to set it |
+| `Callout` | Obsidian-style admonition block — `type`: `note` `info` `tip` `success` `warning` `danger` `question` `abstract`; optional `title` override |
 | `EmptyState` | Empty list states — accepts `icon` (ReactNode) and `message` (string) |
+| `Modal` | Overlay dialog with title + close — wraps any content; body is zero-padded for flush children |
+
+**Shared molecules** (import from `@/components/molecules/<Name>/<Name>`):
+| Component | Use for |
+|---|---|
+| `DocEditor` | Edit/preview markdown editor — accepts `content` and `onSave`; toolbar with mode toggle + dirty-state save button |
 
 **Server**
 - All routes require `requireAuth`; admin routes use `requireAdmin`

@@ -28,6 +28,7 @@ interface ProjectState {
 	clearItems: () => void;
 	invalidateCache: () => void;
 
+	setCurrentPhase: (projectUuid: string, phaseUuid: string | null) => Promise<boolean>;
 	fetchMembers: (projectUuid: string) => Promise<void>;
 	addMember: (projectUuid: string, userId: number, role: string) => Promise<boolean>;
 	removeMember: (projectUuid: string, userId: number) => Promise<boolean>;
@@ -179,6 +180,22 @@ export const useProjectStore = create<ProjectState>()(
 			clearError: () => set({ error: null }),
 			clearItems: () => set({ items: [], lastFetch: null }),
 			invalidateCache: () => set({ lastFetch: null }),
+
+			setCurrentPhase: async (projectUuid, phaseUuid) => {
+				const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}`, {
+					method: 'PUT',
+					headers: getHeaders(),
+					body: JSON.stringify({ currentPhaseUuid: phaseUuid }),
+				});
+				if (!response.ok) return false;
+				const updated: Project = await response.json();
+				set((state) => ({
+					items: state.items.map((p) =>
+						p.uuid === projectUuid ? { ...p, ...updated } : p
+					),
+				}));
+				return true;
+			},
 
 			fetchMembers: async (projectUuid) => {
 				const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}/members`, {

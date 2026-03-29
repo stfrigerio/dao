@@ -10,12 +10,21 @@ import {
 	Sparkles,
 	Loader2,
 	FileQuestion,
+	FileText,
+	MapPin,
+	Eye,
+	Pencil,
 } from 'lucide-react';
-import type { Project, Phase, Objective } from '../../../../../../shared/types';
+import type { Project, Phase, Objective, Document } from '../../../../../../shared/types';
 import { useObjectiveStore } from '@/store/objectives';
-import { useAgentJobStore } from '@/store/agentJobs';
+import { useAgentJobStore, type AnalysisResult } from '@/store/agentJobs';
+import { useDocumentStore } from '@/store/documents';
+import { useProjectStore } from '@/store/projects';
 import { Badge } from '@/components/atoms/Badge/Badge';
 import { EmptyState } from '@/components/atoms/EmptyState/EmptyState';
+import { Modal } from '@/components/atoms/Modal/Modal';
+import { Callout } from '@/components/atoms/Callout/Callout';
+import { DocEditor } from '@/components/molecules/DocEditor/DocEditor';
 import styles from './PhasePanel.module.css';
 
 interface PhasePanelProps {
@@ -34,16 +43,36 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		toggleTask,
 		deleteTask,
 	} = useObjectiveStore();
-	const { startDiscovery, getJobForPhase, startObjectiveQuestions, getJobForObjective } =
-		useAgentJobStore();
+	const {
+		startDiscovery,
+		getJobForPhase,
+		startObjectiveQuestions,
+		getJobForObjective,
+		startDocumentationAnalysis,
+		startDocumentationProduction,
+		getAnalysisJob,
+		getProductionJob,
+		analysisJobs,
+	} = useAgentJobStore();
+	const { documents, fetchDocuments, createDocument, updateDocument } = useDocumentStore();
+	const { setCurrentPhase } = useProjectStore();
 
 	const isDiscoveryPhase = phase.orderIndex === 0;
+	const isCurrentPhase = project.currentPhaseUuid === phase.uuid;
 	const agentJob = getJobForPhase(phase.uuid);
 	const agentRunning = agentJob?.status === 'running';
 
 	const phaseObjectives = objectives[phase.uuid] || [];
+	const projectDocs = documents[project.uuid] || [];
 
 	const [expandedObjectives, setExpandedObjectives] = useState<Set<string>>(new Set());
+	const [briefMode, setBriefMode] = useState<'preview' | 'edit'>('preview');
+	const [questionsMode, setQuestionsMode] = useState<'preview' | 'edit'>('preview');
+	const [activeQuestionsDoc, setActiveQuestionsDoc] = useState<Document | null>(null);
+	const [analysisTarget, setAnalysisTarget] = useState<{
+		obj: Objective;
+		result: AnalysisResult;
+	} | null>(null);
 	const [newObjectiveName, setNewObjectiveName] = useState('');
 	const [showNewObjective, setShowNewObjective] = useState(false);
 	const [newTaskNames, setNewTaskNames] = useState<Record<string, string>>({});
@@ -52,6 +81,30 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 	useEffect(() => {
 		fetchObjectives(phase.uuid);
 	}, [phase.uuid, fetchObjectives]);
+
+	useEffect(() => {
+		fetchDocuments(project.uuid);
+	}, [project.uuid, fetchDocuments]);
+
+	// When an analysis job completes, open the confirmation modal for that objective
+	useEffect(() => {
+		for (const obj of phaseObjectives) {
+			const job = getAnalysisJob(obj.uuid);
+			if (job?.status === 'done' && job.result && !analysisTarget) {
+				setAnalysisTarget({ obj, result: job.result });
+				break;
+			}
+		}
+	}, [phaseObjectives, analysisJobs, analysisTarget, getAnalysisJob]);
+
+	// Keep activeQuestionsDoc in sync with the store so DocEditor sees updated content after save
+	useEffect(() => {
+		if (!activeQuestionsDoc) return;
+		const updated = projectDocs.find((d) => d.uuid === activeQuestionsDoc.uuid);
+		if (updated && updated.content !== activeQuestionsDoc.content) {
+			setActiveQuestionsDoc(updated);
+		}
+	}, [projectDocs]);
 
 	const toggleExpanded = (uuid: string) => {
 		setExpandedObjectives((prev) => {
@@ -76,6 +129,24 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		setShowNewTask((prev) => ({ ...prev, [obj.uuid]: false }));
 	};
 
+	const briefDoc = isDiscoveryPhase
+		? projectDocs.find((d) => d.name === 'Project Brief' && d.objectiveId === null)
+		: undefined;
+	const briefHasContent = !!briefDoc?.content?.trim();
+
+	const handleBriefSave = async (content: string) => {
+		if (briefDoc) {
+			await updateDocument(briefDoc.uuid, content, project.uuid);
+		} else {
+			await createDocument(project.uuid, {
+				name: 'Project Brief',
+				content,
+				type: 'note',
+				phaseId: phase.id,
+			});
+		}
+	};
+
 	const totalTasks = phaseObjectives.reduce((n, o) => n + (o.tasks?.length || 0), 0);
 	const doneTasks = phaseObjectives.reduce(
 		(n, o) => n + (o.tasks?.filter((t) => t.completed).length || 0),
@@ -87,27 +158,76 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		<div className={styles.panel}>
 			<div className={styles.panelHeader}>
 				<h3 className={styles.panelTitle}>{phase.name}</h3>
-				{isDiscoveryPhase && (
+				<div className={styles.panelActions}>
 					<button
-						className={styles.agentButton}
-						onClick={() => startDiscovery(phase.uuid)}
-						disabled={agentRunning}
-						aria-label="run discovery agent"
+						className={`${styles.pinButton} ${isCurrentPhase ? styles.pinButtonActive : ''}`}
+						onClick={() =>
+							setCurrentPhase(project.uuid, isCurrentPhase ? null : phase.uuid)
+						}
+						aria-label={isCurrentPhase ? 'unset current phase' : 'set as current phase'}
 					>
-						{agentRunning ? (
-							<>
-								<Loader2 size={12} className={styles.spin} /> GENERATING…
-							</>
-						) : (
-							<>
-								<Sparkles size={12} /> GENERATE OBJECTIVES
-							</>
-						)}
+						<MapPin size={12} />
+						{isCurrentPhase ? 'CURRENT' : 'SET AS CURRENT'}
 					</button>
-				)}
+					{isDiscoveryPhase && (
+						<button
+							className={styles.agentButton}
+							onClick={() => startDiscovery(phase.uuid)}
+							disabled={agentRunning || !briefHasContent}
+							title={!briefHasContent ? 'Write a Project Brief first' : undefined}
+							aria-label="run discovery agent"
+						>
+							{agentRunning ? (
+								<>
+									<Loader2 size={12} className={styles.spin} /> GENERATING…
+								</>
+							) : (
+								<>
+									<Sparkles size={12} /> GENERATE OBJECTIVES
+								</>
+							)}
+						</button>
+					)}
+				</div>
 			</div>
 
 			<div className={styles.panelBody}>
+				{isDiscoveryPhase && (
+					<Callout
+						type="abstract"
+						title="Project Brief"
+						actions={
+							<>
+								<button
+									className={`${styles.modeIconBtn} ${briefMode === 'preview' ? styles.modeIconBtnActive : ''}`}
+									onClick={() => setBriefMode('preview')}
+									title="Preview"
+								>
+									<Eye size={13} />
+								</button>
+								<button
+									className={`${styles.modeIconBtn} ${briefMode === 'edit' ? styles.modeIconBtnActive : ''}`}
+									onClick={() => setBriefMode('edit')}
+									title="Edit"
+								>
+									<Pencil size={13} />
+								</button>
+							</>
+						}
+					>
+						<p className={styles.briefHint}>
+							Describe the high-level scope and goals. This is used to generate
+							accurate questions and objectives.
+						</p>
+						<DocEditor
+							content={briefDoc?.content ?? null}
+							onSave={handleBriefSave}
+							mode={briefMode}
+							onModeChange={setBriefMode}
+						/>
+					</Callout>
+				)}
+
 				<div className={styles.section}>
 					<div className={styles.sectionHeaderRow}>
 						<label className={styles.sectionLabel}>
@@ -136,6 +256,13 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 							const expanded = expandedObjectives.has(obj.uuid);
 							const taskCount = obj.tasks?.length || 0;
 							const doneTaskCount = obj.tasks?.filter((t) => t.completed).length || 0;
+
+							const questionsDoc =
+								projectDocs.find((d) => d.objectiveId === obj.id) ??
+								projectDocs.find((d) => d.name === `Questions: ${obj.name}`);
+							const questionsAnswered =
+								!!questionsDoc?.content &&
+								!questionsDoc.content.includes('_answer here_');
 
 							return (
 								<div
@@ -184,6 +311,77 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 											(() => {
 												const qJob = getJobForObjective(obj.uuid);
 												const qRunning = qJob?.status === 'running';
+												if (questionsDoc) {
+													const analysisJob = getAnalysisJob(obj.uuid);
+													const productionJob = getProductionJob(
+														obj.uuid
+													);
+													const isAnalysing =
+														analysisJob?.status === 'running';
+													const isProducing =
+														productionJob?.status === 'running';
+													return (
+														<>
+															<button
+																className={`${styles.viewQuestionsButton} ${questionsAnswered ? styles.viewQuestionsAnswered : ''}`}
+																onClick={(e) => {
+																	e.stopPropagation();
+																	setQuestionsMode('preview');
+																	setActiveQuestionsDoc(
+																		questionsDoc
+																	);
+																}}
+																aria-label="view questions document"
+															>
+																{questionsAnswered ? (
+																	<>
+																		<CheckSquare size="1em" />{' '}
+																		ANSWERED
+																	</>
+																) : (
+																	<>
+																		<FileText size="1em" />{' '}
+																		QUESTIONS
+																	</>
+																)}
+															</button>
+															{questionsAnswered && (
+																<button
+																	className={styles.produceButton}
+																	disabled={
+																		isAnalysing || isProducing
+																	}
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		startDocumentationAnalysis(
+																			obj.uuid
+																		);
+																	}}
+																	aria-label="produce documentation"
+																>
+																	{isAnalysing || isProducing ? (
+																		<>
+																			<Loader2
+																				size="1em"
+																				className={
+																					styles.spin
+																				}
+																			/>{' '}
+																			{isProducing
+																				? 'PRODUCING…'
+																				: 'ANALYSING…'}
+																		</>
+																	) : (
+																		<>
+																			<Sparkles size="1em" />{' '}
+																			PRODUCE DOCS
+																		</>
+																	)}
+																</button>
+															)}
+														</>
+													);
+												}
 												return (
 													<button
 														className={styles.questionsButton}
@@ -200,14 +398,15 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 														{qRunning ? (
 															<>
 																<Loader2
-																	size={11}
+																	size="1em"
 																	className={styles.spin}
 																/>{' '}
 																GENERATING…
 															</>
 														) : (
 															<>
-																<FileQuestion size={11} /> QUESTIONS
+																<FileQuestion size="1em" />{' '}
+																QUESTIONS
 															</>
 														)}
 													</button>
@@ -369,6 +568,114 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 					)}
 				</div>
 			</div>
+
+			<Modal
+				open={activeQuestionsDoc !== null}
+				title={activeQuestionsDoc?.name ?? ''}
+				onClose={() => setActiveQuestionsDoc(null)}
+				actions={
+					<>
+						<button
+							className={`${styles.modeIconBtn} ${questionsMode === 'preview' ? styles.modeIconBtnActive : ''}`}
+							onClick={() => setQuestionsMode('preview')}
+							title="Preview"
+						>
+							<Eye size={13} />
+						</button>
+						<button
+							className={`${styles.modeIconBtn} ${questionsMode === 'edit' ? styles.modeIconBtnActive : ''}`}
+							onClick={() => setQuestionsMode('edit')}
+							title="Edit"
+						>
+							<Pencil size={13} />
+						</button>
+					</>
+				}
+			>
+				{activeQuestionsDoc && (
+					<DocEditor
+						content={activeQuestionsDoc.content}
+						onSave={(content) =>
+							updateDocument(activeQuestionsDoc.uuid, content, project.uuid)
+						}
+						mode={questionsMode}
+						onModeChange={setQuestionsMode}
+					/>
+				)}
+			</Modal>
+
+			<Modal
+				open={analysisTarget !== null}
+				title={`Produce docs — ${analysisTarget?.obj.name ?? ''}`}
+				onClose={() => setAnalysisTarget(null)}
+				size="compact"
+			>
+				{analysisTarget && (
+					<div className={styles.analysisBody}>
+						{analysisTarget.result.completable.length > 0 && (
+							<div className={styles.analysisSection}>
+								<p className={styles.analysisSectionLabel}>
+									<CheckSquare size={13} /> Can be completed
+								</p>
+								<ul className={styles.analysisList}>
+									{analysisTarget.result.completable.map((t) => (
+										<li key={t.taskUuid} className={styles.analysisItemDone}>
+											{t.taskName}
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+						{analysisTarget.result.incomplete.length > 0 && (
+							<div className={styles.analysisSection}>
+								<p className={styles.analysisSectionLabel}>
+									<FileQuestion size={13} /> Missing information
+								</p>
+								<ul className={styles.analysisList}>
+									{analysisTarget.result.incomplete.map((t, i) => (
+										<li key={i} className={styles.analysisItemMissing}>
+											<span className={styles.analysisTaskName}>
+												{t.taskName}
+											</span>
+											<span className={styles.analysisReason}>
+												{t.reason}
+											</span>
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+						<div className={styles.analysisActions}>
+							<button
+								className={styles.analysisCancelBtn}
+								onClick={() => setAnalysisTarget(null)}
+							>
+								Cancel
+							</button>
+							{analysisTarget.result.completable.length > 0 && (
+								<button
+									className={styles.analysisConfirmBtn}
+									onClick={() => {
+										startDocumentationProduction(
+											analysisTarget.obj.uuid,
+											analysisTarget.result.completable.map(
+												(t) => t.taskUuid
+											),
+											project.uuid,
+											phase.uuid
+										);
+										setAnalysisTarget(null);
+									}}
+								>
+									{analysisTarget.result.incomplete.length > 0
+										? `Complete ${analysisTarget.result.completable.length} task${analysisTarget.result.completable.length > 1 ? 's' : ''} anyway`
+										: `Complete ${analysisTarget.result.completable.length} task${analysisTarget.result.completable.length > 1 ? 's' : ''}`}
+								</button>
+							)}
+						</div>
+					</div>
+				)}
+			</Modal>
 		</div>
 	);
 }
