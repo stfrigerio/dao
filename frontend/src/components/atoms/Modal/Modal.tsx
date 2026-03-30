@@ -9,7 +9,7 @@ interface ModalProps {
 	title: string;
 	onClose: () => void;
 	children: React.ReactNode;
-	size?: 'default' | 'compact';
+	size?: 'default' | 'compact' | 'wide';
 	actions?: React.ReactNode;
 }
 
@@ -35,7 +35,7 @@ export function Modal({ open, title, onClose, children, size = 'default', action
 					onClick={onClose}
 				>
 					<motion.div
-						className={`${styles.dialog} ${size === 'compact' ? styles.dialogCompact : ''}`}
+						className={`${styles.dialog} ${size === 'compact' ? styles.dialogCompact : size === 'wide' ? styles.dialogWide : ''}`}
 						initial={{ opacity: 0, scale: 0.96, y: 8 }}
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						exit={{ opacity: 0, scale: 0.96, y: 8 }}

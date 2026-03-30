@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
 	Plus,
@@ -12,7 +12,7 @@ import {
 	FileQuestion,
 	FileText,
 	MapPin,
-	Eye,
+	Maximize2,
 	Pencil,
 } from 'lucide-react';
 import type { Project, Phase, Objective, Document } from '../../../../../../shared/types';
@@ -26,6 +26,7 @@ import { EmptyState } from '@/components/atoms/EmptyState/EmptyState';
 import { Modal } from '@/components/atoms/Modal/Modal';
 import { Callout } from '@/components/atoms/Callout/Callout';
 import { DocEditor } from '@/components/molecules/DocEditor/DocEditor';
+import { QuestionFocusMode } from './QuestionFocusMode';
 import styles from './PhasePanel.module.css';
 
 interface PhasePanelProps {
@@ -41,16 +42,18 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		toggleObjective,
 		deleteObjective,
 		createTask,
+		updateTask,
 		toggleTask,
 		deleteTask,
 	} = useObjectiveStore();
 	const {
-		startDiscovery,
+		startPhaseObjectives,
 		getJobForPhase,
 		startObjectiveQuestions,
 		getJobForObjective,
 		startDocumentationAnalysis,
 		startDocumentationProduction,
+		clearAnalysisJob,
 		getAnalysisJob,
 		getProductionJob,
 		analysisJobs,
@@ -68,13 +71,18 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 	const projectDocs = documents[project.uuid] || [];
 
 	const [expandedObjectives, setExpandedObjectives] = useState<Set<string>>(new Set());
-	const [briefMode, setBriefMode] = useState<'preview' | 'edit'>('preview');
-	const [questionsMode, setQuestionsMode] = useState<'preview' | 'edit'>('preview');
 	const [activeQuestionsDoc, setActiveQuestionsDoc] = useState<Document | null>(null);
+	const [focusModeDoc, setFocusModeDoc] = useState<Document | null>(null);
 	const [analysisTarget, setAnalysisTarget] = useState<{
 		obj: Objective;
 		result: AnalysisResult;
 	} | null>(null);
+	const dismissAnalysis = () => {
+		if (analysisTarget) clearAnalysisJob(analysisTarget.obj.uuid);
+		setAnalysisTarget(null);
+	};
+	const [editingTask, setEditingTask] = useState<{ uuid: string; objUuid: string; name: string } | null>(null);
+	const editInputRef = useRef<HTMLInputElement>(null);
 	const [newObjectiveName, setNewObjectiveName] = useState('');
 	const [showNewObjective, setShowNewObjective] = useState(false);
 	const [newTaskNames, setNewTaskNames] = useState<Record<string, string>>({});
@@ -183,7 +191,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 					{isDiscoveryPhase && (
 						<button
 							className={styles.agentButton}
-							onClick={() => startDiscovery(phase.uuid)}
+							onClick={() => startPhaseObjectives(phase.uuid)}
 							disabled={agentRunning || !briefHasContent}
 							title={!briefHasContent ? 'Write a Project Brief first' : undefined}
 							aria-label="run discovery agent"
@@ -208,25 +216,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						type="abstract"
 						title="Project Brief"
 						defaultOpen={false}
-						actions={
-							<>
-								<button
-									className={`${styles.modeIconBtn} ${briefMode === 'preview' ? styles.modeIconBtnActive : ''}`}
-									onClick={() => setBriefMode('preview')}
-									title="Preview"
-								>
-									<Eye size={13} />
-								</button>
-								<button
-									className={`${styles.modeIconBtn} ${briefMode === 'edit' ? styles.modeIconBtnActive : ''}`}
-									onClick={() => setBriefMode('edit')}
-									title="Edit"
-								>
-									<Pencil size={13} />
-								</button>
-							</>
-						}
-					>
+						>
 						<p className={styles.briefHint}>
 							Describe the high-level scope and goals. This is used to generate
 							accurate questions and objectives.
@@ -234,8 +224,6 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						<DocEditor
 							content={briefDoc?.content ?? null}
 							onSave={handleBriefSave}
-							mode={briefMode}
-							onModeChange={setBriefMode}
 						/>
 					</Callout>
 				)}
@@ -338,7 +326,6 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 																className={`${styles.viewQuestionsButton} ${questionsAnswered ? styles.viewQuestionsAnswered : ''}`}
 																onClick={(e) => {
 																	e.stopPropagation();
-																	setQuestionsMode('preview');
 																	setActiveQuestionsDoc(
 																		questionsDoc
 																	);
@@ -447,57 +434,78 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 												style={{ overflow: 'hidden' }}
 											>
 												<div className={styles.taskList}>
-													{(obj.tasks || []).map((task) => (
-														<div
-															key={task.uuid}
-															className={`${styles.taskRow} ${task.completed ? styles.taskDone : ''}`}
-														>
-															<button
-																className={styles.checkButton}
-																onClick={() =>
-																	toggleTask(
-																		task.uuid,
-																		obj.uuid,
-																		phase.uuid,
-																		!task.completed
-																	)
-																}
-																aria-label={
-																	task.completed
-																		? 'mark incomplete'
-																		: 'mark complete'
-																}
+													{(obj.tasks || []).map((task) => {
+														const isEditing = editingTask?.uuid === task.uuid;
+														return (
+															<div
+																key={task.uuid}
+																className={`${styles.taskRow} ${task.completed ? styles.taskDone : ''}`}
+																onClick={() => {
+																	if (!isEditing) toggleTask(task.uuid, obj.uuid, phase.uuid, !task.completed);
+																}}
+																style={{ cursor: isEditing ? 'default' : 'pointer' }}
 															>
-																{task.completed ? (
-																	<CheckSquare
-																		size={14}
-																		className={styles.checkDone}
+																<span className={styles.checkIcon}>
+																	{task.completed ? (
+																		<CheckSquare size={18} className={styles.checkDone} />
+																	) : (
+																		<Square size={18} className={styles.checkTodo} />
+																	)}
+																</span>
+																{isEditing ? (
+																	<input
+																		ref={editInputRef}
+																		className={styles.editTaskInput}
+																		value={editingTask.name}
+																		onChange={(e) => setEditingTask({ ...editingTask, name: e.target.value })}
+																		onClick={(e) => e.stopPropagation()}
+																		onKeyDown={(e) => {
+																			if (e.key === 'Enter') {
+																				const name = editingTask.name.trim();
+																				if (name && name !== task.name) {
+																					updateTask(task.uuid, obj.uuid, phase.uuid, { name });
+																				}
+																				setEditingTask(null);
+																			}
+																			if (e.key === 'Escape') setEditingTask(null);
+																		}}
+																		onBlur={() => {
+																			const name = editingTask.name.trim();
+																			if (name && name !== task.name) {
+																				updateTask(task.uuid, obj.uuid, phase.uuid, { name });
+																			}
+																			setEditingTask(null);
+																		}}
+																		autoFocus
 																	/>
 																) : (
-																	<Square
-																		size={14}
-																		className={styles.checkTodo}
-																	/>
+																	<span className={styles.taskName}>
+																		{task.name}
+																	</span>
 																)}
-															</button>
-															<span className={styles.taskName}>
-																{task.name}
-															</span>
-															<button
-																className={styles.deleteButton}
-																onClick={() =>
-																	deleteTask(
-																		task.uuid,
-																		obj.uuid,
-																		phase.uuid
-																	)
-																}
-																aria-label="delete task"
-															>
-																<Trash2 size={12} />
-															</button>
-														</div>
-													))}
+																<button
+																	className={styles.editButton}
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		setEditingTask({ uuid: task.uuid, objUuid: obj.uuid, name: task.name });
+																	}}
+																	aria-label="edit task"
+																>
+																	<Pencil size={12} />
+																</button>
+																<button
+																	className={styles.deleteButton}
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		deleteTask(task.uuid, obj.uuid, phase.uuid);
+																	}}
+																	aria-label="delete task"
+																>
+																	<Trash2 size={12} />
+																</button>
+															</div>
+														);
+													})}
 
 													{showNewTask[obj.uuid] ? (
 														<div className={styles.newRow}>
@@ -586,22 +594,16 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 				title={activeQuestionsDoc?.name ?? ''}
 				onClose={() => setActiveQuestionsDoc(null)}
 				actions={
-					<>
-						<button
-							className={`${styles.modeIconBtn} ${questionsMode === 'preview' ? styles.modeIconBtnActive : ''}`}
-							onClick={() => setQuestionsMode('preview')}
-							title="Preview"
-						>
-							<Eye size={13} />
-						</button>
-						<button
-							className={`${styles.modeIconBtn} ${questionsMode === 'edit' ? styles.modeIconBtnActive : ''}`}
-							onClick={() => setQuestionsMode('edit')}
-							title="Edit"
-						>
-							<Pencil size={13} />
-						</button>
-					</>
+					<button
+						className={styles.iconBtn}
+						onClick={() => {
+							setFocusModeDoc(activeQuestionsDoc);
+							setActiveQuestionsDoc(null);
+						}}
+						title="Focus mode"
+					>
+						<Maximize2 size={13} />
+					</button>
 				}
 			>
 				{activeQuestionsDoc && (
@@ -610,16 +612,23 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						onSave={(content) =>
 							updateDocument(activeQuestionsDoc.uuid, content, project.uuid)
 						}
-						mode={questionsMode}
-						onModeChange={setQuestionsMode}
 					/>
 				)}
 			</Modal>
 
+			{focusModeDoc && (
+				<QuestionFocusMode
+					title={focusModeDoc.name}
+					content={focusModeDoc.content ?? ''}
+					onSave={(content) => updateDocument(focusModeDoc.uuid, content, project.uuid)}
+					onClose={() => setFocusModeDoc(null)}
+				/>
+			)}
+
 			<Modal
 				open={analysisTarget !== null}
 				title={`Produce docs — ${analysisTarget?.obj.name ?? ''}`}
-				onClose={() => setAnalysisTarget(null)}
+				onClose={dismissAnalysis}
 				size="compact"
 			>
 				{analysisTarget && (
@@ -660,7 +669,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						<div className={styles.analysisActions}>
 							<button
 								className={styles.analysisCancelBtn}
-								onClick={() => setAnalysisTarget(null)}
+								onClick={dismissAnalysis}
 							>
 								Cancel
 							</button>
@@ -676,7 +685,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 											project.uuid,
 											phase.uuid
 										);
-										setAnalysisTarget(null);
+										dismissAnalysis();
 									}}
 								>
 									{analysisTarget.result.incomplete.length > 0

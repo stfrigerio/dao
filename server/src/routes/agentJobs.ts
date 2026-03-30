@@ -4,7 +4,7 @@ import { db } from '../db/index.js';
 import { phases } from '../db/schema.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import {
-	runDiscoveryAgent,
+	runPhaseObjectivesAgent,
 	runObjectiveQuestionsAgent,
 	runDocumentationAnalysisAgent,
 	runDocumentationProductionAgent,
@@ -13,8 +13,8 @@ import {
 
 const router = Router();
 
-// POST /phases/:uuid/run-discovery
-router.post('/phases/:uuid/run-discovery', requireAuth, async (req: AuthRequest, res, next) => {
+// POST /phases/:uuid/generate-objectives
+router.post('/phases/:uuid/generate-objectives', requireAuth, async (req: AuthRequest, res, next) => {
 	try {
 		const phaseUuid = req.params['uuid'] as string;
 		const [phase] = await db.select().from(phases).where(eq(phases.uuid, phaseUuid));
@@ -22,7 +22,7 @@ router.post('/phases/:uuid/run-discovery', requireAuth, async (req: AuthRequest,
 			res.status(404).json({ error: 'Phase not found' });
 			return;
 		}
-		const jobId = await runDiscoveryAgent(phaseUuid);
+		const jobId = await runPhaseObjectivesAgent(phaseUuid);
 		res.json({ jobId });
 	} catch (err) {
 		next(err);

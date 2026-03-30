@@ -39,9 +39,9 @@ These three documents are the exit criteria for Discovery. When they exist and a
 
 ---
 
-## Standard objectives for Discovery
+## Objectives for Discovery
 
-These apply to every project. Names and tasks will vary, but the three objectives are constant:
+Two objectives are transversal — they apply to every project:
 
 ### Objective 1 — Problem Definition
 Every task in this objective produces a clear, written answer. No vague answers allowed.
@@ -59,18 +59,22 @@ Scope is not a feature list. It is a decision about what is in and what is expli
 - Write the non-goals: what this will never do, and why that boundary exists
 - List open risks and unknowns that must be resolved before Planning
 
-### Objective 3 — Users
-Who uses this and what do they actually need to do?
+### Additional objectives — project-specific
 
-**Tasks (adapt to project):**
-- Define the user types (not marketing personas — real people with real relationships to the tool)
-- Write 3–5 core scenarios: "user does X to achieve Y"
+Beyond Problem Definition and Scope, objectives are inferred from the project context. Common ones:
+
+- **Users** — relevant when there are distinct human actors with different relationships to the tool. Produces user type definitions and concrete usage scenarios.
+- **Technical Architecture** — relevant when key technical decisions must be made before scope can be locked.
+- **Integrations** — relevant when the project depends on or connects to external systems.
+- **Data Model** — relevant when the shape of the data is a core design question.
+
+These are examples, not a checklist. The agent generates what actually applies to the project.
 
 ---
 
 ## Exit constraint
 
-All three objectives must be fully tasked and all tasks completed before moving to Planning. The test: can you hand someone the outputs of Discovery and have them write a planning document without asking you a single clarifying question? If not, keep going.
+All objectives must be fully tasked and all tasks completed before moving to Planning. The test: can you hand someone the outputs of Discovery and have them write a planning document without asking you a single clarifying question? If not, keep going.
 
 ---
 

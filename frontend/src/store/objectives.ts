@@ -253,7 +253,8 @@ export const useObjectiveStore = create<ObjectiveState>()(
 						body: JSON.stringify({ completed }),
 					});
 					if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				} catch {
+				} catch (err) {
+					console.error('toggleTask failed:', err);
 					// Revert
 					set((state) => ({
 						objectives: {

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import { launchBrowser, login, BASE_URL, waitForText, apiCleanupProject } from './helpers.js';
+import { launchBrowser, login, clickPhaseCard, closePhasePanel, BASE_URL, waitForText, apiCleanupProject } from './helpers.js';
 
 let browser;
 let page;
@@ -70,21 +70,7 @@ describe('Per-objective question generation', () => {
 	// ── 3. Open the Discovery phase panel ─────────────────────────────────────
 
 	test('3. opens the Discovery phase panel by clicking the Discovery phase card', async () => {
-		// Wait for phase cards to render
-		await page.waitForFunction(
-			() => {
-				const spans = Array.from(document.querySelectorAll('span'));
-				return spans.some((s) => s.innerText.trim() === 'Discovery');
-			},
-			{ timeout: 8000 }
-		);
-
-		// Click the card that contains the "Discovery" span
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const discoverySpan = spans.find((s) => s.innerText.trim() === 'Discovery');
-			if (discoverySpan) discoverySpan.closest('div')?.click();
-		});
+		await clickPhaseCard(page, 'Discovery');
 
 		// The panel title h3 must now say "Discovery"
 		await page.waitForFunction(
@@ -202,35 +188,8 @@ describe('Per-objective question generation', () => {
 	// ── 7. Non-discovery phase: no QUESTIONS button ────────────────────────────
 
 	test('7. Planning phase panel does NOT show the QUESTIONS button on objectives', async () => {
-		// Close Discovery panel by clicking its card again
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const discoverySpan = spans.find((s) => s.innerText.trim() === 'Discovery');
-			if (discoverySpan) discoverySpan.closest('div')?.click();
-		});
-
-		// Wait for Discovery panel h3 to disappear
-		await page.waitForFunction(
-			() => {
-				const h3s = Array.from(document.querySelectorAll('h3'));
-				return !h3s.some((h) => h.innerText.trim() === 'Discovery');
-			},
-			{ timeout: 5000 }
-		);
-
-		// Open the Planning phase panel
-		await page.waitForFunction(
-			() => {
-				const spans = Array.from(document.querySelectorAll('span'));
-				return spans.some((s) => s.innerText.trim() === 'Planning');
-			},
-			{ timeout: 5000 }
-		);
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const planningSpan = spans.find((s) => s.innerText.trim() === 'Planning');
-			if (planningSpan) planningSpan.closest('div')?.click();
-		});
+		// Open Planning phase (auto-closes Discovery)
+		await clickPhaseCard(page, 'Planning');
 
 		// Wait for Planning panel h3
 		await page.waitForFunction(
@@ -284,11 +243,7 @@ describe('Per-objective question generation', () => {
 		expect(questionsButton).toBeNull();
 
 		// Close the Planning panel
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const planningSpan = spans.find((s) => s.innerText.trim() === 'Planning');
-			if (planningSpan) planningSpan.closest('div')?.click();
-		});
+		await closePhasePanel(page, 'Planning');
 		await page.waitForFunction(
 			() => {
 				const h3s = Array.from(document.querySelectorAll('h3'));
@@ -302,18 +257,7 @@ describe('Per-objective question generation', () => {
 
 	test('8. clicking the QUESTIONS button on "Requirements" shows GENERATING…', async () => {
 		// Re-open the Discovery phase panel
-		await page.waitForFunction(
-			() => {
-				const spans = Array.from(document.querySelectorAll('span'));
-				return spans.some((s) => s.innerText.trim() === 'Discovery');
-			},
-			{ timeout: 5000 }
-		);
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const discoverySpan = spans.find((s) => s.innerText.trim() === 'Discovery');
-			if (discoverySpan) discoverySpan.closest('div')?.click();
-		});
+		await clickPhaseCard(page, 'Discovery');
 
 		// Wait for Discovery panel h3 AND "Requirements" objective to load
 		await page.waitForFunction(

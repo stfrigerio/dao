@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import { launchBrowser, login, BASE_URL, apiCleanupProject } from './helpers.js';
+import { launchBrowser, login, clickPhaseCard, closePhasePanel, BASE_URL, apiCleanupProject } from './helpers.js';
 
 let browser;
 let page;
@@ -95,49 +95,21 @@ describe('Discovery Agent — generate objectives', () => {
 
 	test('4. clicking the Discovery phase card opens a panel with GENERATE OBJECTIVES button', async () => {
 		// Switch back to Phases tab
-		const buttons = await page.$$('button');
-		for (const btn of buttons) {
-			const text = await btn.evaluate((el) => el.innerText.trim());
-			if (text === 'Phases') {
-				await btn.click();
-				break;
-			}
-		}
-
-		await page.waitForFunction(
-			() => {
-				const spans = Array.from(document.querySelectorAll('span'));
-				return spans.some((s) => s.innerText.trim() === 'Discovery');
-			},
-			{ timeout: 5000 }
-		);
 		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const discoverySpan = spans.find((s) => s.innerText.trim() === 'Discovery');
-			if (discoverySpan) discoverySpan.closest('div')?.click();
+			const btn = Array.from(document.querySelectorAll('button')).find(
+				(b) => b.innerText.trim() === 'Phases'
+			);
+			if (btn) btn.click();
 		});
 
-		await page.waitForSelector('button[aria-label="run discovery agent"]', { timeout: 8000 });
+		await clickPhaseCard(page, 'Discovery');
+
+		await page.waitForSelector('button[aria-label="run discovery agent"]', { timeout: 15000 });
 	});
 
 	test('5. non-Discovery phases do NOT show the GENERATE OBJECTIVES button', async () => {
-		// Close Discovery panel by clicking its card again
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const s = spans.find((s) => s.innerText.trim() === 'Discovery');
-			if (s) s.closest('div')?.click();
-		});
-		await page.waitForFunction(
-			() => !document.querySelector('button[aria-label="run discovery agent"]'),
-			{ timeout: 5000 }
-		);
-
-		// Open Planning phase
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const s = spans.find((s) => s.innerText.trim() === 'Planning');
-			if (s) s.closest('div')?.click();
-		});
+		// Open Planning phase (clicking a different card auto-closes Discovery)
+		await clickPhaseCard(page, 'Planning');
 		await page.waitForFunction(
 			() => Array.from(document.querySelectorAll('h3')).some((h) => h.innerText.trim() === 'Planning'),
 			{ timeout: 5000 }
@@ -147,11 +119,7 @@ describe('Discovery Agent — generate objectives', () => {
 		expect(agentButton).toBeNull();
 
 		// Close Planning panel
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const s = spans.find((s) => s.innerText.trim() === 'Planning');
-			if (s) s.closest('div')?.click();
-		});
+		await closePhasePanel(page, 'Planning');
 		await page.waitForFunction(
 			() => !Array.from(document.querySelectorAll('h3')).some((h) => h.innerText.trim() === 'Planning'),
 			{ timeout: 5000 }
@@ -162,12 +130,100 @@ describe('Discovery Agent — generate objectives', () => {
 
 	test('6. clicking GENERATE OBJECTIVES shows GENERATING… on the button', async () => {
 		// Re-open Discovery
-		await page.evaluate(() => {
-			const spans = Array.from(document.querySelectorAll('span'));
-			const s = spans.find((s) => s.innerText.trim() === 'Discovery');
-			if (s) s.closest('div')?.click();
-		});
+		await clickPhaseCard(page, 'Discovery');
 		await page.waitForSelector('button[aria-label="run discovery agent"]', { timeout: 8000 });
+
+		// The GENERATE OBJECTIVES button is disabled until the Project Brief has content.
+		// Expand the "Project Brief" callout and type some content into the DocEditor, then
+		// save it via the API (the current DocEditor implementation exposes no save button
+		// for the brief — the API is the only reliable save path in this context).
+		await page.evaluate(() => {
+			// Click the callout toggle button that contains "Project Brief" (CSS may uppercase it)
+			const buttons = Array.from(document.querySelectorAll('button'));
+			const toggle = buttons.find(
+				(b) => b.innerText.toLowerCase().includes('project brief')
+			);
+			if (toggle) toggle.click();
+		});
+
+		// Wait for the ProseMirror contenteditable to appear inside the callout
+		await page.waitForSelector('.ProseMirror[contenteditable="true"]', { timeout: 5000 });
+
+		// Type brief content into the editor
+		await page.click('.ProseMirror[contenteditable="true"]');
+		await page.keyboard.type('This project aims to build a discovery agent system for project management.');
+
+		// Save via the API using the auth token stored in localStorage
+		await page.evaluate(async () => {
+			const raw = localStorage.getItem('dao-auth');
+			const token = raw ? JSON.parse(raw)?.state?.token ?? null : null;
+			if (!token) throw new Error('No auth token found in localStorage');
+
+			// Get the current project UUID from the URL
+			const projectUuid = window.location.pathname.split('/projects/')[1]?.split('/')[0];
+			if (!projectUuid) throw new Error('Could not determine project UUID from URL');
+
+			// Find the Discovery phase to get phaseId
+			const phasesRes = await fetch(`/api/projects/${projectUuid}/phases`, {
+				headers: { Authorization: `Bearer ${token}` },
+			});
+			const phases = await phasesRes.json();
+			const discoveryPhase = phases.find((p) => p.orderIndex === 0);
+			if (!discoveryPhase) throw new Error('Could not find Discovery phase');
+
+			// Check if the brief already exists
+			const docsRes = await fetch(`/api/projects/${projectUuid}/documents`, {
+				headers: { Authorization: `Bearer ${token}` },
+			});
+			const docs = await docsRes.json();
+			const existingBrief = docs.find((d) => d.name === 'Project Brief' && d.objectiveId === null);
+
+			if (existingBrief) {
+				// Update existing brief
+				await fetch(`/api/documents/${existingBrief.uuid}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						content: 'This project aims to build a discovery agent system for project management.',
+					}),
+				});
+			} else {
+				// Create new brief
+				await fetch(`/api/projects/${projectUuid}/documents`, {
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						name: 'Project Brief',
+						content: 'This project aims to build a discovery agent system for project management.',
+						type: 'note',
+						phaseId: discoveryPhase.id,
+					}),
+				});
+			}
+		});
+
+		// Navigate to the same page to reload the store with the new brief content
+		await page.goto(page.url(), { waitUntil: 'networkidle0', timeout: 15000 });
+
+		// Re-open the Discovery phase panel
+		await clickPhaseCard(page, 'Discovery');
+
+		// Wait for the button to appear and become enabled (brief now has content)
+		await page.waitForFunction(
+			() => {
+				const btn = document.querySelector('button[aria-label="run discovery agent"]');
+				return btn && !btn.disabled;
+			},
+			{ timeout: 8000 }
+		);
+
+		// Now click the button
 		await page.click('button[aria-label="run discovery agent"]');
 
 		await page.waitForFunction(

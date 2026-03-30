@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import { useToastStore } from '@/store/toast';
 import { ToastContainer } from '@/components/Toast/Toast';
@@ -18,6 +19,34 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 	return <>{children}</>;
 }
 
+function AnimatedRoutes() {
+	const location = useLocation();
+
+	return (
+		<AnimatePresence mode="wait">
+			<Routes location={location} key={location.pathname}>
+				<Route path="/login" element={<LoginPage />} />
+				<Route
+					path="/*"
+					element={
+						<ProtectedRoute>
+							<AppShell>
+								<Routes>
+									<Route path="/" element={<Navigate to="/dashboard" replace />} />
+									<Route path="/dashboard" element={<DashboardPage />} />
+									<Route path="/projects" element={<ProjectsPage />} />
+									<Route path="/projects/:uuid" element={<ProjectDetailPage />} />
+									<Route path="/settings" element={<SettingsPage />} />
+								</Routes>
+							</AppShell>
+						</ProtectedRoute>
+					}
+				/>
+			</Routes>
+		</AnimatePresence>
+	);
+}
+
 export default function App() {
 	const { fetchMe, token } = useAuthStore();
 	const { toasts, removeToast } = useToastStore();
@@ -30,31 +59,7 @@ export default function App() {
 		<div className={styles.app}>
 			<BrowserRouter>
 				<BreadcrumbProvider>
-					<Routes>
-						<Route path="/login" element={<LoginPage />} />
-						<Route
-							path="/*"
-							element={
-								<ProtectedRoute>
-									<AppShell>
-										<Routes>
-											<Route
-												path="/"
-												element={<Navigate to="/dashboard" replace />}
-											/>
-											<Route path="/dashboard" element={<DashboardPage />} />
-											<Route path="/projects" element={<ProjectsPage />} />
-											<Route
-												path="/projects/:uuid"
-												element={<ProjectDetailPage />}
-											/>
-											<Route path="/settings" element={<SettingsPage />} />
-										</Routes>
-									</AppShell>
-								</ProtectedRoute>
-							}
-						/>
-					</Routes>
+					<AnimatedRoutes />
 				</BreadcrumbProvider>
 			</BrowserRouter>
 			<ToastContainer toasts={toasts} removeToast={removeToast} />

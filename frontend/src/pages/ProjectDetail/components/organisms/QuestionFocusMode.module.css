@@ -1,0 +1,307 @@
+.overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 200;
+	background: var(--color-background);
+	display: flex;
+	flex-direction: column;
+}
+
+/* Progress bar */
+
+.progressTrack {
+	height: 2px;
+	background: var(--color-border);
+	flex-shrink: 0;
+}
+
+.progressFill {
+	height: 100%;
+	background: var(--color-accent);
+}
+
+/* Top bar */
+
+.topBar {
+	display: flex;
+	align-items: center;
+	padding: 0 var(--spacing-xl);
+	height: 52px;
+	border-bottom: 1px solid var(--color-border);
+	flex-shrink: 0;
+	gap: var(--spacing-md);
+}
+
+.topTitle {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	text-transform: uppercase;
+	color: var(--color-text-muted);
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	flex: 1;
+}
+
+.topCenter {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--color-border);
+	border: none;
+	cursor: pointer;
+	padding: 0;
+	transition: all var(--transition-fast);
+}
+
+.dot:hover {
+	background: var(--color-text-muted);
+}
+
+.dotAnswered {
+	background: var(--color-primary);
+	opacity: 0.6;
+}
+
+.dotActive {
+	background: var(--color-accent) !important;
+	opacity: 1;
+	transform: scale(1.3);
+}
+
+.topRight {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-md);
+	flex: 1;
+	justify-content: flex-end;
+}
+
+.counter {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	letter-spacing: var(--letter-spacing-wide);
+}
+
+.closeBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	background: none;
+	border: none;
+	color: var(--color-text-muted);
+	cursor: pointer;
+	border-radius: var(--radius-sm);
+	transition: all var(--transition-fast);
+}
+
+.closeBtn:hover {
+	background: var(--color-background-secondary);
+	color: var(--color-text);
+}
+
+/* Body */
+
+.body {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: var(--spacing-2xl) var(--spacing-xl);
+}
+
+.questionCard {
+	width: 100%;
+	max-width: 680px;
+}
+
+.sectionLabel {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	text-transform: uppercase;
+	color: var(--color-text-tertiary);
+	margin: 0 0 var(--spacing-lg) 0;
+	line-height: 1.5;
+}
+
+.questionHeader {
+	margin-bottom: var(--spacing-md);
+}
+
+.qLabel {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	text-transform: uppercase;
+	color: var(--color-accent);
+}
+
+.questionText {
+	font-size: 1.125rem;
+	line-height: 1.75;
+	color: var(--color-text);
+	margin: 0 0 var(--spacing-2xl) 0;
+	font-weight: var(--font-weight-normal);
+}
+
+/* Option chips */
+
+.optionChips {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+	margin-bottom: var(--spacing-lg);
+}
+
+.optionChip {
+	padding: 5px var(--spacing-md);
+	width: 100%;
+	text-align: left;
+	background: transparent;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-muted);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	letter-spacing: var(--letter-spacing-wide);
+	cursor: pointer;
+	outline: none;
+	transition: all var(--transition-fast);
+}
+
+.optionChip:hover {
+	border-color: var(--color-text-muted);
+	color: var(--color-text);
+}
+
+.optionChipSelected {
+	border-color: var(--color-accent);
+	color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.optionChipFocused {
+	border-color: var(--color-text-secondary);
+	color: var(--color-text);
+}
+
+/* Answer */
+
+.answerWrap {
+	border-left: 2px solid var(--color-accent);
+	padding-left: var(--spacing-lg);
+}
+
+.answerTextarea {
+	width: 100%;
+	min-height: 120px;
+	background: transparent;
+	border: none;
+	outline: none;
+	resize: none;
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-sm);
+	line-height: 1.7;
+	color: var(--color-text);
+	caret-color: var(--color-accent);
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+.answerTextarea::placeholder {
+	color: var(--color-text-tertiary);
+}
+
+/* Bottom bar */
+
+.bottomBar {
+	display: flex;
+	align-items: center;
+	padding: 0 var(--spacing-xl);
+	height: 56px;
+	border-top: 1px solid var(--color-border);
+	flex-shrink: 0;
+	gap: var(--spacing-md);
+}
+
+.navBtn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px var(--spacing-md);
+	background: transparent;
+	border: 1px solid var(--color-text-secondary);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-secondary);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wide);
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.navBtn:hover:not(:disabled) {
+	border-color: var(--color-text);
+	color: var(--color-text);
+}
+
+.navBtn:disabled {
+	opacity: 0.25;
+	cursor: default;
+}
+
+.bottomCenter {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing-lg);
+}
+
+.saveBtn {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 5px 14px;
+	background: transparent;
+	border: 1px solid var(--color-accent);
+	border-radius: var(--radius-sm);
+	color: var(--color-accent);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wide);
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.saveBtn:hover:not(:disabled) {
+	background: var(--color-accent);
+	color: #000;
+}
+
+.saveBtn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+

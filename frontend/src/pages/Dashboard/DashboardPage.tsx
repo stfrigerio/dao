@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderKanban, Activity, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useProjectStore } from '@/store/projects';
 import { useBreadcrumb } from '@/context/BreadcrumbContext';
@@ -16,10 +16,6 @@ export function DashboardPage() {
 		fetchAll();
 	}, [fetchAll]);
 
-	const activeProjects = projects.filter((p) => p.status === 'active');
-	const professionalProjects = projects.filter((p) => p.type === 'professional');
-	const personalProjects = projects.filter((p) => p.type === 'personal');
-
 	return (
 		<div className={styles.page}>
 			<div className={styles.header}>
@@ -33,36 +29,6 @@ export function DashboardPage() {
 					<Plus size={16} />
 					New Project
 				</Link>
-			</div>
-
-			<div className={styles.statsGrid}>
-				<div className={styles.statCard}>
-					<div className={styles.statIcon}>
-						<FolderKanban size={20} />
-					</div>
-					<div>
-						<p className={styles.statValue}>{activeProjects.length}</p>
-						<p className={styles.statLabel}>Active Projects</p>
-					</div>
-				</div>
-				<div className={styles.statCard}>
-					<div className={styles.statIcon}>
-						<Activity size={20} />
-					</div>
-					<div>
-						<p className={styles.statValue}>{professionalProjects.length}</p>
-						<p className={styles.statLabel}>Professional</p>
-					</div>
-				</div>
-				<div className={styles.statCard}>
-					<div className={styles.statIcon}>
-						<FolderKanban size={20} />
-					</div>
-					<div>
-						<p className={styles.statValue}>{personalProjects.length}</p>
-						<p className={styles.statLabel}>Personal</p>
-					</div>
-				</div>
 			</div>
 
 			<section className={styles.section}>

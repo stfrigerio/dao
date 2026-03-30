@@ -3,6 +3,13 @@ import { randomUUID } from 'crypto';
 import { db } from '../db/index.js';
 import { objectives, tasks, phases, projects, documents } from '../db/schema.js';
 import { eq, and, isNull } from 'drizzle-orm';
+import { buildDiscoveryObjectivesPrompt } from './prompts/discoveryObjectives.js';
+import { buildPlanningObjectivesPrompt } from './prompts/planningObjectives.js';
+import { buildExecutionObjectivesPrompt } from './prompts/executionObjectives.js';
+import { buildReviewObjectivesPrompt } from './prompts/reviewObjectives.js';
+import { buildQuestionsPrompt } from './prompts/questions.js';
+import { buildAnalysisPrompt } from './prompts/analysis.js';
+import { buildProductionPrompt } from './prompts/production.js';
 
 export interface AnalysisResult {
 	completable: Array<{ taskUuid: string; taskName: string }>;
@@ -22,7 +29,21 @@ export function getJob(id: string): AgentJob | undefined {
 	return jobs.get(id);
 }
 
-export async function runDiscoveryAgent(phaseUuid: string): Promise<string> {
+function selectObjectivesPrompt(
+	phaseName: string,
+	projectName: string,
+	projectType: string,
+	projectDescription: string | null,
+	scope: string | null
+): string {
+	const name = phaseName.toLowerCase();
+	if (name.includes('planning')) return buildPlanningObjectivesPrompt(projectName, projectType, projectDescription, scope);
+	if (name.includes('execution')) return buildExecutionObjectivesPrompt(projectName, projectType, projectDescription, scope);
+	if (name.includes('review')) return buildReviewObjectivesPrompt(projectName, projectType, projectDescription, scope);
+	return buildDiscoveryObjectivesPrompt(projectName, projectType, projectDescription, scope);
+}
+
+export async function runPhaseObjectivesAgent(phaseUuid: string): Promise<string> {
 	const jobId = randomUUID();
 	jobs.set(jobId, { id: jobId, status: 'running' });
 
@@ -45,7 +66,13 @@ export async function runDiscoveryAgent(phaseUuid: string): Promise<string> {
 					)
 				);
 
-			const prompt = buildObjectivesPrompt(project.name, project.type, project.description, briefDoc?.content ?? null);
+			const prompt = selectObjectivesPrompt(
+				phase.name,
+				project.name,
+				project.type,
+				project.description,
+				briefDoc?.content ?? null
+			);
 			const raw = await runClaude(prompt);
 
 			// Strip markdown code fences if present
@@ -220,6 +247,13 @@ export async function runDocumentationProductionAgent(
 				await db.update(tasks).set({ completed: true }).where(eq(tasks.uuid, taskUuid));
 			}
 
+			// Auto-complete objective when all its tasks are done
+			const siblingTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, objective.id));
+			const allDone = siblingTasks.every((t) => t.completed);
+			if (allDone) {
+				await db.update(objectives).set({ completed: true, updatedAt: new Date() }).where(eq(objectives.id, objective.id));
+			}
+
 			jobs.set(jobId, { id: jobId, status: 'done' });
 		} catch (err) {
 			jobs.set(jobId, { id: jobId, status: 'error', error: String(err) });
@@ -227,137 +261,6 @@ export async function runDocumentationProductionAgent(
 	})();
 
 	return jobId;
-}
-
-function buildQuestionsPrompt(projectName: string, description: string | null, scope: string | null, objectiveName: string, taskNames: string[]): string {
-	return `Generate a questionnaire for the objective "${objectiveName}" of the project "${projectName}".
-
-Project: ${projectName}
-${description ? `Description: ${description}` : ''}
-${scope ? `\nProject Brief (high-level scope):\n${scope}` : ''}
-
-This objective has the following tasks:
-${taskNames.map((t, i) => `${i + 1}. ${t}`).join('\n')}
-
-For each task, write 3–5 focused questions. When fully answered, the answers must provide all the information needed to complete that task — nothing else should need to be asked.
-
-Output ONLY the markdown document. No preamble. No explanation. Start directly with the title.
-
-# Questions: ${objectiveName}
-## Project: ${projectName}
-
----
-
-${taskNames.map(t => `## ${t}
-
-**Q1:**
-
-> _answer here_
-
-**Q2:**
-
-> _answer here_
-
-**Q3:**
-
-> _answer here_
-
-`).join('\n')}`;
-}
-
-function buildObjectivesPrompt(name: string, type: string, description: string | null, scope: string | null): string {
-	return `Generate Discovery phase objectives and tasks for the project "${name}".
-
-Project: ${name}
-Type: ${type}
-${description ? `Description: ${description}` : ''}
-${scope ? `\nProject Brief (high-level scope):\n${scope}` : ''}
-
-Output ONLY a raw JSON array. No preamble, no explanation, no markdown code fences. Start with [ and end with ].
-
-The array must have exactly 3 objectives — these are the standard Discovery phase objectives:
-1. Problem Definition — tasks that produce a written problem statement, definition of success, and constraint inventory
-2. Scope — tasks that produce an MVP definition, a non-goals list, and a risk register
-3. Users — tasks that produce user type definitions and 3-5 concrete usage scenarios
-
-Each objective has 3-4 tasks. Tasks are specific, actionable, and tailored to this project's context.
-
-Format:
-[
-  {
-    "name": "Problem Definition",
-    "tasks": ["task 1", "task 2", "task 3"]
-  },
-  {
-    "name": "Scope",
-    "tasks": ["task 1", "task 2", "task 3"]
-  },
-  {
-    "name": "Users",
-    "tasks": ["task 1", "task 2"]
-  }
-]`;
-}
-
-function buildAnalysisPrompt(
-	projectName: string,
-	description: string | null,
-	scope: string | null,
-	objectiveName: string,
-	objTasks: Array<{ uuid: string; name: string }>,
-	questionsContent: string
-): string {
-	return `You are analyzing a completed Q&A questionnaire to determine which project tasks can be fully completed from the answers provided.
-
-Project: ${projectName}
-${description ? `Description: ${description}` : ''}
-${scope ? `\nProject Brief:\n${scope}` : ''}
-
-Objective: ${objectiveName}
-
-Tasks to evaluate:
-${objTasks.map((t, i) => `${i + 1}. [UUID: ${t.uuid}] ${t.name}`).join('\n')}
-
-Q&A Document:
-${questionsContent}
-
-For each task, determine: do the answers provide sufficient, specific information to produce a complete and actionable deliverable for that task?
-
-Output ONLY a raw JSON object. No preamble, no explanation, no markdown code fences. Start with { and end with }.
-
-{
-  "completable": [
-    { "taskUuid": "...", "taskName": "..." }
-  ],
-  "incomplete": [
-    { "taskName": "...", "reason": "specific information that is missing or too vague" }
-  ]
-}`;
-}
-
-function buildProductionPrompt(
-	projectName: string,
-	description: string | null,
-	scope: string | null,
-	objectiveName: string,
-	taskName: string,
-	questionsContent: string
-): string {
-	return `You are producing a project deliverable document based on answered discovery questions.
-
-Project: ${projectName}
-${description ? `Description: ${description}` : ''}
-${scope ? `\nProject Brief:\n${scope}` : ''}
-
-Objective: ${objectiveName}
-Task: ${taskName}
-
-Based on the following answered Q&A document, produce a complete, actionable deliverable for this task. Write the actual document — not a summary or analysis of it. Use markdown formatting.
-
-Q&A Document:
-${questionsContent}
-
-Output ONLY the markdown document. No preamble. No explanation. Start directly with the content.`;
 }
 
 function runClaude(prompt: string): Promise<string> {

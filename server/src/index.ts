@@ -1,6 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import path from 'path';
 import 'dotenv/config';
 
 import authRouter from './routes/auth';
@@ -16,13 +17,18 @@ import { errorHandler } from './middleware/errorHandler';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:10000').split(',');
 app.use(cors({
-	origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+	origin: (origin, callback) => {
+		if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+		else callback(new Error(`CORS: origin ${origin} not allowed`));
+	},
 	credentials: true,
 }));
 app.use(express.json());
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 app.use(cookieParser() as any);
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);

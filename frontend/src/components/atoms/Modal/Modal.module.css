@@ -64,6 +64,10 @@
 	max-width: 560px;
 }
 
+.dialogWide {
+	max-width: 1400px;
+}
+
 .dialogCompact .body {
 	overflow-y: auto;
 }

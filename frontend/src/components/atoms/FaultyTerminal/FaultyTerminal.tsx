@@ -237,6 +237,7 @@ export function FaultyTerminal({
 	const loadAnimationStartRef = useRef(0);
 	const timeOffsetRef = useRef(Math.random() * 100);
 
+	const [gridMulX, gridMulY] = gridMul;
 	const tintVec = useMemo(() => hexToRgb(tint), [tint]);
 	const ditherValue = useMemo(
 		() => (typeof dither === 'boolean' ? (dither ? 1 : 0) : dither),
@@ -276,7 +277,7 @@ export function FaultyTerminal({
 					),
 				},
 				uScale: { value: scale },
-				uGridMul: { value: new Float32Array(gridMul) },
+				uGridMul: { value: new Float32Array([gridMulX, gridMulY]) },
 				uDigitSize: { value: digitSize },
 				uScanlineIntensity: { value: scanlineIntensity },
 				uGlitchAmount: { value: glitchAmount },
@@ -361,7 +362,8 @@ export function FaultyTerminal({
 		pause,
 		timeScale,
 		scale,
-		gridMul,
+		gridMulX,
+		gridMulY,
 		digitSize,
 		scanlineIntensity,
 		glitchAmount,

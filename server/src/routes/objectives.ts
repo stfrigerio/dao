@@ -133,7 +133,15 @@ router.patch('/tasks/:uuid/complete', requireAuth, async (req: AuthRequest, res)
 		res.status(404).json({ error: 'Task not found' });
 		return;
 	}
+
 	res.json(task);
+
+	// Auto-complete objective when all its tasks are done (fire-and-forget after response)
+	(async () => {
+		const siblingTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, task.objectiveId));
+		const allDone = siblingTasks.every((t) => t.completed);
+		await db.update(objectives).set({ completed: allDone, updatedAt: new Date() }).where(eq(objectives.id, task.objectiveId));
+	})().catch(() => {});
 });
 
 // PUT /tasks/:uuid

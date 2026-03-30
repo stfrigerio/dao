@@ -31,7 +31,7 @@ interface AgentJobState {
 	objectiveJobs: Record<string, AgentJob>; // keyed by objectiveUuid
 	analysisJobs: Record<string, AgentJob>; // keyed by objectiveUuid
 	productionJobs: Record<string, AgentJob>; // keyed by objectiveUuid
-	startDiscovery: (phaseUuid: string) => Promise<void>;
+	startPhaseObjectives: (phaseUuid: string) => Promise<void>;
 	startObjectiveQuestions: (objectiveUuid: string, projectUuid: string) => Promise<void>;
 	startDocumentationAnalysis: (objectiveUuid: string) => Promise<void>;
 	startDocumentationProduction: (
@@ -42,6 +42,7 @@ interface AgentJobState {
 	) => Promise<void>;
 	getJobForPhase: (phaseUuid: string) => AgentJob | undefined;
 	getJobForObjective: (objectiveUuid: string) => AgentJob | undefined;
+	clearAnalysisJob: (objectiveUuid: string) => void;
 	getAnalysisJob: (objectiveUuid: string) => AgentJob | undefined;
 	getProductionJob: (objectiveUuid: string) => AgentJob | undefined;
 }
@@ -54,11 +55,11 @@ export const useAgentJobStore = create<AgentJobState>()(
 			analysisJobs: {},
 			productionJobs: {},
 
-			startDiscovery: async (phaseUuid) => {
+			startPhaseObjectives: async (phaseUuid) => {
 				if (get().jobs[phaseUuid]?.status === 'running') return;
 
 				try {
-					const res = await fetch(`${API_BASE_URL}/phases/${phaseUuid}/run-discovery`, {
+					const res = await fetch(`${API_BASE_URL}/phases/${phaseUuid}/generate-objectives`, {
 						method: 'POST',
 						headers: getHeaders(),
 					});
@@ -325,6 +326,14 @@ export const useAgentJobStore = create<AgentJobState>()(
 				} catch {
 					useToastStore.getState().error('Failed to start production.');
 				}
+			},
+
+			clearAnalysisJob: (objectiveUuid) => {
+				set((state) => {
+					const next = { ...state.analysisJobs };
+					delete next[objectiveUuid];
+					return { analysisJobs: next };
+				});
 			},
 
 			getJobForPhase: (phaseUuid) => get().jobs[phaseUuid],

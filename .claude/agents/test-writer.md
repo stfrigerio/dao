@@ -5,7 +5,20 @@ tools: Read, Glob, Grep, Write, Edit, Bash
 model: sonnet
 ---
 
-You write E2E tests for the 道 (dao) project. Tests live in `tests/` and run with Jest + Puppeteer against the live dev stack (frontend :5173, backend :3001).
+You write E2E tests for the 道 (dao) project. Tests live in `tests/` and run with Jest + Puppeteer against the live dev stack (frontend :10000, backend :10001).
+
+## Test scope — what to test and what not to test
+
+**Test user flows and full components, not micro-behaviors.** Each test file should cover a page, a feature, or a meaningful user journey — not a single internal mechanism like "autosave fires on modal close". If you want to verify that a component saves correctly, test the component end-to-end (open it, edit content, close, reopen, verify persistence) as part of a broader flow.
+
+Bad examples:
+- `doc-editor-autosave.test.js` — too narrow; autosave is an implementation detail
+- `button-disable-state.test.js` — test the whole form/flow, not one button's disabled state
+
+Good examples:
+- `doc-editor.test.js` — tests the DocEditor component overall: open, edit, TOC, section delete, save, reopen
+- `discovery-agent.test.js` — tests the full discovery flow: create project → run agent → verify objectives
+- `question-focus-mode.test.js` — tests the focus mode user journey end-to-end
 
 ## Before writing any test
 
@@ -53,9 +66,12 @@ describe('PageName', () => {
 - `launchBrowser()` — launches headless Chrome at `/usr/bin/google-chrome-stable`
 - `login(page)` — logs in as `admin@dao.local` / `admin123`
 - `waitForText(page, text, timeoutMs)` — waits for text to appear in `document.body.innerText`
+- `clickPhaseCard(page, phaseName)` — opens a phase panel by name (no-op if already open); uses `data-testid="phase-card-{name}"`
+- `closePhasePanel(page, phaseName)` — closes a phase panel by name (no-op if already closed)
+- `isAuthBypassed()` — returns `true` when `DEV_AUTH_BYPASS` is enabled (wrong creds still log in); use to skip auth-negative tests
 - `apiCleanupProject(projectName)` — deletes a project by name via API (for use in `afterAll`)
 - `apiCleanupUser(email)` — deletes a user by email via API (for use in `afterAll`)
-- `BASE_URL` = `http://localhost:5173`
+- `BASE_URL` = `http://localhost:10000`
 - `CREDENTIALS` = `{ email: 'admin@dao.local', password: 'admin123' }`
 
 ## Navigation
@@ -70,6 +86,10 @@ Prefer stable selectors in this order:
 2. `input[placeholder="..."]` for form fields
 3. `button[type="submit"]` for forms
 4. Iterate `page.$$('button')` and match `el.innerText` when no stable selector exists
+
+## CSS text-transform caveat
+
+`innerText` respects CSS `text-transform`. If the CSS uppercases a heading/button (e.g. `text-transform: uppercase`), `el.innerText` returns `"PROJECT BRIEF"` not `"Project Brief"`. Always use `.toLowerCase().includes(...)` when matching text that might be CSS-transformed.
 
 ## Assertions — the most important rules
 

@@ -26,7 +26,7 @@ Project management tool: projects → phases → Claude agent sessions + Linear 
 **Shared molecules** (import from `@/components/molecules/<Name>/<Name>`):
 | Component | Use for |
 |---|---|
-| `DocEditor` | Edit/preview markdown editor — accepts `content` and `onSave`; toolbar with mode toggle + dirty-state save button |
+| `DocEditor` | WYSIWYG markdown editor — accepts `content` and `onSave`; renders formatted markdown inline with no separate preview mode; bubble menu for formatting; TOC sidebar with per-section delete; exposes `save()` via `forwardRef` handle — callers must trigger it (e.g. on modal close) to persist changes; no internal save button |
 
 **Server**
 - All routes require `requireAuth`; admin routes use `requireAdmin`

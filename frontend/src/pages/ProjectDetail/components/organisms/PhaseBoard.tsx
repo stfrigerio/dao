@@ -36,6 +36,7 @@ export function PhaseBoard({ project, phases }: PhaseBoardProps) {
 					<React.Fragment key={phase.uuid}>
 						<div
 							className={`${styles.phaseCard} ${selectedPhase?.uuid === phase.uuid ? styles.phaseCardActive : ''}`}
+							data-testid={`phase-card-${phase.name}`}
 							onClick={() =>
 								setSelectedPhase((prev) =>
 									prev?.uuid === phase.uuid ? null : phase
