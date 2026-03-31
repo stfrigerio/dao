@@ -23,8 +23,7 @@ export interface Project {
 	type: ProjectType;
 	status: ProjectStatus;
 	ownerId: number | null;
-	linearTeamId: string | null;
-	linearProjectId: string | null;
+	linearApiKey: string | null;
 	currentPhaseUuid: string | null;
 	createdAt: string;
 	updatedAt: string;

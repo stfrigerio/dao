@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import { launchBrowser, login, BASE_URL, waitForText, apiCleanupProject } from './helpers.js';
+import { launchBrowser, login, BASE_URL, waitForText, apiCleanupProject } from '../helpers.js';
 
 let browser;
 let page;

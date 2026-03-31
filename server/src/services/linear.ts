@@ -1,31 +1,12 @@
 import { LinearClient } from '@linear/sdk';
 
-function getClient(apiKey?: string): LinearClient {
-	const key = apiKey || process.env.LINEAR_API_KEY;
-	if (!key) throw new Error('LINEAR_API_KEY not configured');
-	return new LinearClient({ apiKey: key });
+function getClient(apiKey: string): LinearClient {
+	return new LinearClient({ apiKey });
 }
 
-export async function getTeams(apiKey?: string) {
+export async function getIssues(apiKey: string) {
 	const client = getClient(apiKey);
-	const teams = await client.teams();
-	return teams.nodes.map((t) => ({ id: t.id, name: t.name, key: t.key }));
-}
-
-export async function getProjects(teamId: string, apiKey?: string) {
-	const client = getClient(apiKey);
-	const team = await client.team(teamId);
-	const projects = await team.projects();
-	return projects.nodes.map((p) => ({ id: p.id, name: p.name, description: p.description }));
-}
-
-export async function getIssues(teamId: string, projectId?: string, apiKey?: string) {
-	const client = getClient(apiKey);
-
-	const filter: Record<string, unknown> = { team: { id: { eq: teamId } } };
-	if (projectId) filter.project = { id: { eq: projectId } };
-
-	const issues = await client.issues({ filter });
+	const issues = await client.issues();
 	return issues.nodes.map((i) => ({
 		id: i.id,
 		identifier: i.identifier,
@@ -36,19 +17,15 @@ export async function getIssues(teamId: string, projectId?: string, apiKey?: str
 	}));
 }
 
-export async function createIssue(
-	teamId: string,
-	title: string,
-	description?: string,
-	projectId?: string,
-	apiKey?: string
-) {
+export async function createIssue(apiKey: string, title: string, description?: string) {
 	const client = getClient(apiKey);
+	const teams = await client.teams();
+	const team = teams.nodes[0];
+	if (!team) throw new Error('No team found in Linear workspace');
 	const payload = await client.createIssue({
-		teamId,
+		teamId: team.id,
 		title,
 		description,
-		projectId,
 	});
 	const issue = await payload.issue;
 	if (!issue) throw new Error('Failed to create issue');
@@ -58,4 +35,60 @@ export async function createIssue(
 		title: issue.title,
 		url: issue.url,
 	};
+}
+
+export async function createProject(apiKey: string, name: string, description?: string) {
+	const client = getClient(apiKey);
+	const teams = await client.teams();
+	const team = teams.nodes[0];
+	if (!team) throw new Error('No team found in Linear workspace');
+	const payload = await client.createProject({
+		teamIds: [team.id],
+		name,
+		description,
+	});
+	const project = await payload.project;
+	if (!project) throw new Error('Failed to create Linear project');
+	return { id: project.id, name: project.name, url: project.url };
+}
+
+export async function createIssueInProject(
+	apiKey: string,
+	projectId: string,
+	title: string,
+	description?: string,
+	completed?: boolean
+) {
+	const client = getClient(apiKey);
+	const teams = await client.teams();
+	const team = teams.nodes[0];
+	if (!team) throw new Error('No team found in Linear workspace');
+
+	let stateId: string | undefined;
+	if (completed) {
+		const states = await team.states();
+		const doneState = states.nodes.find((s) => s.type === 'completed');
+		if (doneState) stateId = doneState.id;
+	}
+
+	const payload = await client.createIssue({
+		teamId: team.id,
+		projectId,
+		title,
+		description,
+		...(stateId && { stateId }),
+	});
+	const issue = await payload.issue;
+	if (!issue) throw new Error('Failed to create issue');
+	return { id: issue.id, identifier: issue.identifier, title: issue.title, url: issue.url };
+}
+
+export async function validateApiKey(apiKey: string): Promise<boolean> {
+	try {
+		const client = getClient(apiKey);
+		await client.viewer;
+		return true;
+	} catch {
+		return false;
+	}
 }

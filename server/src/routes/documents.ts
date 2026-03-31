@@ -104,6 +104,16 @@ router.patch('/documents/:uuid', requireAuth, async (req: AuthRequest, res) => {
 	if (content !== undefined) update.content = content;
 	if (humanReviewed !== undefined) update.humanReviewed = humanReviewed;
 	if (name !== undefined) update.name = name;
+
+	// Auto-mark questions docs as reviewed when all answers are filled in
+	if (content !== undefined && humanReviewed === undefined) {
+		const [existing] = await db.select({ name: documents.name }).from(documents).where(eq(documents.uuid, uuid));
+		if (existing?.name.startsWith('Questions: ')) {
+			const allAnswered = !content.includes('_answer here_');
+			update.humanReviewed = allAnswered;
+		}
+	}
+
 	const [doc] = await db
 		.update(documents)
 		.set(update)

@@ -63,7 +63,7 @@ export function ProjectsPage() {
 		<div className={styles.page}>
 			<div className={styles.header}>
 				<div>
-					<h1 className={styles.title}>Projects</h1>
+					<h1 className={styles.title}>Projects <span className="han">项目</span></h1>
 					<p className={styles.subtitle}>
 						{projects.length} total project{projects.length !== 1 ? 's' : ''}
 					</p>

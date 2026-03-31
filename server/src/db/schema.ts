@@ -19,8 +19,7 @@ export const projects = pgTable('projects', {
 	type: text('type').notNull().default('professional'), // 'professional' | 'personal'
 	status: text('status').notNull().default('active'), // 'active' | 'archived'
 	ownerId: integer('owner_id').references(() => users.id),
-	linearTeamId: text('linear_team_id'),
-	linearProjectId: text('linear_project_id'),
+	linearApiKey: text('linear_api_key'),
 	currentPhaseId: integer('current_phase_id'),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

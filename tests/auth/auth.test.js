@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import { launchBrowser, login, isAuthBypassed, BASE_URL, CREDENTIALS } from './helpers.js';
+import { launchBrowser, login, isAuthBypassed, BASE_URL, CREDENTIALS } from '../helpers.js';
 
 let browser;
 let page;
@@ -64,6 +64,12 @@ describe('Auth', () => {
 	});
 
 	test('logs out and redirects to login', async () => {
+		// Wait for DecryptText animation to finish rendering "Logout"
+		await page.waitForFunction(
+			() => Array.from(document.querySelectorAll('button'))
+				.some((b) => b.innerText.toLowerCase().includes('logout')),
+			{ timeout: 8000 }
+		);
 		await page.evaluate(() => {
 			const btn = Array.from(document.querySelectorAll('button'))
 				.find((b) => b.innerText.toLowerCase().includes('logout'));

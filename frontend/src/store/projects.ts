@@ -32,11 +32,7 @@ interface ProjectState {
 	fetchMembers: (projectUuid: string) => Promise<void>;
 	addMember: (projectUuid: string, userId: number, role: string) => Promise<boolean>;
 	removeMember: (projectUuid: string, userId: number) => Promise<boolean>;
-	linkLinear: (
-		projectUuid: string,
-		linearTeamId: string,
-		linearProjectId: string
-	) => Promise<boolean>;
+	linkLinear: (projectUuid: string, apiKey: string) => Promise<boolean>;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -230,11 +226,11 @@ export const useProjectStore = create<ProjectState>()(
 				return response.ok;
 			},
 
-			linkLinear: async (projectUuid, linearTeamId, linearProjectId) => {
+			linkLinear: async (projectUuid, apiKey) => {
 				const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}/linear`, {
 					method: 'POST',
 					headers: getHeaders(),
-					body: JSON.stringify({ linearTeamId, linearProjectId }),
+					body: JSON.stringify({ apiKey }),
 				});
 				if (!response.ok) return false;
 				const updated = await response.json();

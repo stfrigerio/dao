@@ -326,14 +326,19 @@ export function QuestionFocusMode({ title, content, onSave, onClose }: Props) {
 
 			{/* Question area */}
 			<div className={styles.body}>
-				<AnimatePresence custom={direction}>
+				<AnimatePresence mode="wait" custom={direction}>
 					<motion.div
 						key={index}
 						custom={direction}
-						initial={{ opacity: 0, x: direction * 40 }}
-						animate={{ opacity: 1, x: 0 }}
-						exit={{ opacity: 0, x: direction * -40 }}
-						transition={{ duration: 0.2, ease: 'easeInOut' }}
+						initial="enter"
+						animate="center"
+						exit="exit"
+						variants={{
+							enter: (d: number) => ({ opacity: 0, x: d * 60, scale: 0.98 }),
+							center: { opacity: 1, x: 0, scale: 1 },
+							exit: (d: number) => ({ opacity: 0, x: d * -60, scale: 0.98 }),
+						}}
+						transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
 						className={styles.questionCard}
 					>
 						{current.section && (

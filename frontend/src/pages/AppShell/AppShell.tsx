@@ -38,6 +38,7 @@ export function AppShell({ children }: AppShellProps) {
 					>
 						<LayoutDashboard size={18} />
 						<DecryptText>Dashboard</DecryptText>
+						<span className="han">概览</span>
 					</NavLink>
 					<NavLink
 						to="/projects"
@@ -47,6 +48,7 @@ export function AppShell({ children }: AppShellProps) {
 					>
 						<FolderKanban size={18} />
 						<DecryptText>Projects</DecryptText>
+						<span className="han">项目</span>
 					</NavLink>
 				</div>
 
@@ -59,6 +61,7 @@ export function AppShell({ children }: AppShellProps) {
 					>
 						<Settings size={18} />
 						<DecryptText>Settings</DecryptText>
+						<span className="han">设置</span>
 					</NavLink>
 					<div className={styles.userInfo}>
 						<DecryptText className={styles.userName}>{user?.name ?? ''}</DecryptText>

@@ -11,18 +11,6 @@ const getHeaders = () => {
 	return headers;
 };
 
-export interface LinearTeam {
-	id: string;
-	name: string;
-	key: string;
-}
-
-export interface LinearProject {
-	id: string;
-	name: string;
-	description: string | null;
-}
-
 export interface LinearIssue {
 	id: string;
 	identifier: string;
@@ -35,64 +23,21 @@ export interface LinearIssue {
 }
 
 interface LinearState {
-	teams: LinearTeam[];
-	projects: Record<string, LinearProject[]>; // keyed by teamId
 	issues: Record<string, LinearIssue[]>; // keyed by projectUuid
 	loading: boolean;
 	error: string | null;
 
-	fetchTeams: () => Promise<void>;
-	fetchProjects: (teamId: string) => Promise<void>;
 	fetchIssues: (projectUuid: string) => Promise<void>;
+	syncObjective: (projectUuid: string, objectiveUuid: string) => Promise<boolean>;
 	clearError: () => void;
 }
 
 export const useLinearStore = create<LinearState>()(
 	devtools(
 		(set) => ({
-			teams: [],
-			projects: {},
 			issues: {},
 			loading: false,
 			error: null,
-
-			fetchTeams: async () => {
-				set({ loading: true, error: null });
-				try {
-					const response = await fetch(`${API_BASE_URL}/linear/teams`, {
-						headers: getHeaders(),
-					});
-					if (!response.ok) throw new Error(`HTTP ${response.status}`);
-					const data = await response.json();
-					set({ teams: data, loading: false });
-				} catch (error) {
-					set({
-						loading: false,
-						error: error instanceof Error ? error.message : 'Unknown error',
-					});
-				}
-			},
-
-			fetchProjects: async (teamId) => {
-				set({ loading: true, error: null });
-				try {
-					const response = await fetch(
-						`${API_BASE_URL}/linear/projects?teamId=${teamId}`,
-						{ headers: getHeaders() }
-					);
-					if (!response.ok) throw new Error(`HTTP ${response.status}`);
-					const data = await response.json();
-					set((state) => ({
-						projects: { ...state.projects, [teamId]: data },
-						loading: false,
-					}));
-				} catch (error) {
-					set({
-						loading: false,
-						error: error instanceof Error ? error.message : 'Unknown error',
-					});
-				}
-			},
 
 			fetchIssues: async (projectUuid) => {
 				set({ loading: true, error: null });
@@ -112,6 +57,23 @@ export const useLinearStore = create<LinearState>()(
 						loading: false,
 						error: error instanceof Error ? error.message : 'Unknown error',
 					});
+				}
+			},
+
+			syncObjective: async (projectUuid, objectiveUuid) => {
+				try {
+					const res = await fetch(
+						`${API_BASE_URL}/projects/${projectUuid}/objectives/${objectiveUuid}/sync-linear`,
+						{ method: 'POST', headers: getHeaders() }
+					);
+					if (!res.ok) {
+						const body = await res.json().catch(() => ({}));
+						throw new Error(body.error || `HTTP ${res.status}`);
+					}
+					return true;
+				} catch (error) {
+					set({ error: error instanceof Error ? error.message : 'Unknown error' });
+					return false;
 				}
 			},
 

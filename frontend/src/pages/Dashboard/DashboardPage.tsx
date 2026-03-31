@@ -20,7 +20,7 @@ export function DashboardPage() {
 		<div className={styles.page}>
 			<div className={styles.header}>
 				<div>
-					<h1 className={styles.greeting}>Welcome back, {user?.name?.split(' ')[0]}</h1>
+					<h1 className={styles.greeting}>Welcome back, {user?.name?.split(' ')[0]} <span className="han">欢迎</span></h1>
 					<p className={styles.subheading}>
 						Here's what's happening across your projects.
 					</p>

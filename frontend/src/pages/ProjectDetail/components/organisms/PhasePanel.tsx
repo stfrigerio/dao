@@ -14,11 +14,13 @@ import {
 	MapPin,
 	Maximize2,
 	Pencil,
+	ExternalLink,
 } from 'lucide-react';
 import type { Project, Phase, Objective, Document } from '../../../../../../shared/types';
 import { useObjectiveStore } from '@/store/objectives';
 import { useAgentJobStore, type AnalysisResult } from '@/store/agentJobs';
 import { useDocumentStore } from '@/store/documents';
+import { useLinearStore } from '@/store/linear';
 import { useProjectStore } from '@/store/projects';
 import { useToastStore } from '@/store/toast';
 import { Badge } from '@/components/atoms/Badge/Badge';
@@ -59,8 +61,10 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		analysisJobs,
 	} = useAgentJobStore();
 	const { documents, fetchDocuments, createDocument, updateDocument } = useDocumentStore();
+	const { syncObjective } = useLinearStore();
 	const { setCurrentPhase, error: projectError, clearError } = useProjectStore();
 	const toast = useToastStore();
+	const [syncingObjective, setSyncingObjective] = useState<string | null>(null);
 
 	const isDiscoveryPhase = phase.orderIndex === 0;
 	const isCurrentPhase = project.currentPhaseUuid === phase.uuid;
@@ -164,6 +168,29 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 	);
 	const doneObjectives = phaseObjectives.filter((o) => o.completed).length;
 
+	// Phase exit criteria — qualitative milestones per phase
+	const phaseDocs = projectDocs.filter((d) => d.phaseId === phase.id);
+	const questionDocs = phaseDocs.filter((d) => d.name.startsWith('Questions: '));
+	const questionsAllAnswered = questionDocs.length > 0 && questionDocs.every((d) => d.content && !d.content.includes('_answer here_'));
+	const producedDocs = phaseDocs.filter((d) => !d.name.startsWith('Questions: ') && d.objectiveId !== null);
+	const allReviewed = phaseDocs.length > 0 && phaseDocs.every((d) => d.humanReviewed);
+
+	const discoveryCriteria = [
+		{ label: 'Brief written', done: briefHasContent },
+		{ label: 'Objectives defined', done: phaseObjectives.length > 0 },
+		{ label: 'Questions answered', done: questionsAllAnswered },
+		{ label: 'Docs produced', done: producedDocs.length > 0 },
+		{ label: 'Human reviewed', done: allReviewed },
+	];
+
+	const defaultCriteria = [
+		{ label: 'Objectives defined', done: phaseObjectives.length > 0 },
+		{ label: 'Tasks completed', done: totalTasks > 0 && doneTasks === totalTasks },
+		{ label: 'Human reviewed', done: allReviewed },
+	];
+
+	const criteria = isDiscoveryPhase ? discoveryCriteria : defaultCriteria;
+
 	return (
 		<div className={styles.panel}>
 			<div className={styles.panelHeader}>
@@ -208,6 +235,23 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						</button>
 					)}
 				</div>
+			</div>
+
+			<div className={styles.criteriaBar}>
+				{criteria.map((c, i) => {
+					const prevDone = i > 0 && criteria[i - 1].done;
+					return (
+						<React.Fragment key={i}>
+							{i > 0 && (
+								<div className={`${styles.criteriaLine} ${prevDone && c.done ? styles.criteriaLineDone : ''}`} />
+							)}
+							<div className={`${styles.criteriaStep} ${c.done ? styles.criteriaStepDone : ''}`}>
+								<span className={styles.criteriaStepDot} />
+								<span className={styles.criteriaLabel}>{c.label}</span>
+							</div>
+						</React.Fragment>
+					);
+				})}
 			</div>
 
 			<div className={styles.panelBody}>
@@ -260,7 +304,9 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 							const questionsDoc =
 								projectDocs.find((d) => d.objectiveId === obj.id) ??
 								projectDocs.find((d) => d.name === `Questions: ${obj.name}`);
+							const questionsLinked = !!questionsDoc && questionsDoc.objectiveId === obj.id;
 							const questionsAnswered =
+								questionsLinked &&
 								!!questionsDoc?.content &&
 								!questionsDoc.content.includes('_answer here_');
 
@@ -297,16 +343,6 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 											)}
 										</button>
 										<span className={styles.objectiveName}>{obj.name}</span>
-										{taskCount > 0 && (
-											<Badge variant="default">
-												{doneTaskCount}/{taskCount}
-											</Badge>
-										)}
-										{expanded ? (
-											<ChevronDown size={14} className={styles.chevron} />
-										) : (
-											<ChevronRight size={14} className={styles.chevron} />
-										)}
 										{isDiscoveryPhase &&
 											(() => {
 												const qJob = getJobForObjective(obj.uuid);
@@ -411,6 +447,39 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 													</button>
 												);
 											})()}
+										<div className={styles.objectiveMeta}>
+											{taskCount > 0 && (
+												<Badge variant="default">
+													{doneTaskCount}/{taskCount}
+												</Badge>
+											)}
+											{expanded ? (
+												<ChevronDown size={14} className={styles.chevron} />
+											) : (
+												<ChevronRight size={14} className={styles.chevron} />
+											)}
+										</div>
+										{project.linearApiKey && (
+											<button
+												className={styles.syncButton}
+												disabled={syncingObjective === obj.uuid}
+												onClick={async (e) => {
+													e.stopPropagation();
+													setSyncingObjective(obj.uuid);
+													const ok = await syncObjective(project.uuid, obj.uuid);
+													setSyncingObjective(null);
+													if (ok) toast.success(`"${obj.name}" synced to Linear.`);
+													else toast.error('Failed to sync to Linear.');
+												}}
+												aria-label="sync to linear"
+											>
+												{syncingObjective === obj.uuid ? (
+													<Loader2 size={13} className={styles.spin} />
+												) : (
+													<ExternalLink size={13} />
+												)}
+											</button>
+										)}
 										<button
 											className={styles.deleteButton}
 											onClick={(e) => {

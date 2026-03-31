@@ -3,6 +3,7 @@ import { eq, and, lt } from 'drizzle-orm';
 import { db } from '../db';
 import { projects, projectMembers, users, phases, objectives, documents } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
+import { validateApiKey } from '../services/linear';
 
 const router = Router();
 
@@ -18,8 +19,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
 				type: projects.type,
 				status: projects.status,
 				ownerId: projects.ownerId,
-				linearTeamId: projects.linearTeamId,
-				linearProjectId: projects.linearProjectId,
+				linearApiKey: projects.linearApiKey,
 				currentPhaseUuid: phases.uuid,
 				createdAt: projects.createdAt,
 				updatedAt: projects.updatedAt,
@@ -46,8 +46,7 @@ router.get('/:uuid', requireAuth, async (req: AuthRequest, res) => {
 				type: projects.type,
 				status: projects.status,
 				ownerId: projects.ownerId,
-				linearTeamId: projects.linearTeamId,
-				linearProjectId: projects.linearProjectId,
+				linearApiKey: projects.linearApiKey,
 				currentPhaseUuid: phases.uuid,
 				createdAt: projects.createdAt,
 				updatedAt: projects.updatedAt,
@@ -190,8 +189,7 @@ router.put('/:uuid', requireAuth, async (req: AuthRequest, res) => {
 			type: projects.type,
 			status: projects.status,
 			ownerId: projects.ownerId,
-			linearTeamId: projects.linearTeamId,
-			linearProjectId: projects.linearProjectId,
+			linearApiKey: projects.linearApiKey,
 			currentPhaseUuid: phases.uuid,
 			createdAt: projects.createdAt,
 			updatedAt: projects.updatedAt,
@@ -280,13 +278,22 @@ router.delete('/:uuid/members/:userId', requireAuth, async (req: AuthRequest, re
 	res.json({ ok: true });
 });
 
-// POST /projects/:uuid/linear — link Linear project
+// POST /projects/:uuid/linear — link Linear workspace
 router.post('/:uuid/linear', requireAuth, async (req: AuthRequest, res) => {
 	const uuid = req.params['uuid'] as string;
-	const { linearTeamId, linearProjectId } = req.body;
+	const { apiKey } = req.body;
+	if (!apiKey) {
+		res.status(400).json({ error: 'apiKey required' });
+		return;
+	}
+	const valid = await validateApiKey(apiKey);
+	if (!valid) {
+		res.status(400).json({ error: 'Invalid Linear API key' });
+		return;
+	}
 	const [project] = await db
 		.update(projects)
-		.set({ linearTeamId, linearProjectId, updatedAt: new Date() })
+		.set({ linearApiKey: apiKey, updatedAt: new Date() })
 		.where(eq(projects.uuid, uuid))
 		.returning();
 	if (!project) {

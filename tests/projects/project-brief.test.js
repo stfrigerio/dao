@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import { launchBrowser, login, clickPhaseCard, BASE_URL, apiCleanupProject } from './helpers.js';
+import { launchBrowser, login, clickPhaseCard, BASE_URL, apiCleanupProject } from '../helpers.js';
 
 const projectName = `Brief Test Project ${Date.now()}`;
 let browser;

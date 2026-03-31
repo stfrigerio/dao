@@ -100,7 +100,7 @@ export function SettingsPage() {
 	return (
 		<div className={styles.page}>
 			<div className={styles.header}>
-				<h1 className={styles.title}>Settings</h1>
+				<h1 className={styles.title}>Settings <span className="han">设置</span></h1>
 			</div>
 
 			<section className={styles.section}>

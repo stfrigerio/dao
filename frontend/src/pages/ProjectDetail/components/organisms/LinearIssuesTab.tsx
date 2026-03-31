@@ -15,12 +15,12 @@ export function LinearIssuesTab({ project }: LinearIssuesTabProps) {
 	const projectIssues = issues[project.uuid] || [];
 
 	useEffect(() => {
-		if (project.linearProjectId) {
+		if (project.linearApiKey) {
 			fetchIssues(project.uuid);
 		}
-	}, [project.uuid, project.linearProjectId, fetchIssues]);
+	}, [project.uuid, project.linearApiKey, fetchIssues]);
 
-	if (!project.linearProjectId) {
+	if (!project.linearApiKey) {
 		return (
 			<div className={styles.emptyState}>
 				<p className={styles.emptyText}>No Linear project linked yet.</p>

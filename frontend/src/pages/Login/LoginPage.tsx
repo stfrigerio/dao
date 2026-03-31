@@ -55,7 +55,7 @@ export function LoginPage() {
 					transition={{ delay: 0.15, duration: 0.45, ease: 'easeOut' }}
 				>
 					<h1 className={styles.logo}>道</h1>
-					<p className={styles.subtitle}>the way</p>
+					<p className={styles.subtitle}>the way <span className="han">之道</span></p>
 				</motion.div>
 
 				<motion.form
