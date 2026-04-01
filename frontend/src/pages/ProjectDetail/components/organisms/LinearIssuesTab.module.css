@@ -131,3 +131,12 @@
 	color: var(--color-text-secondary);
 	font-size: var(--font-size-sm);
 }
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+.spin {
+	animation: spin 1s linear infinite;
+}

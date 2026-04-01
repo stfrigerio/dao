@@ -215,14 +215,25 @@ export function QuestionFocusMode({ title, content, onSave, onClose }: Props) {
 		setFocusSlot(0);
 	}, [index]);
 
-	// Focus correct element when slot or question changes
+	// Focus correct element when slot or question changes.
+	// AnimatePresence mode="wait" delays the entering card, so we poll until the
+	// ref is available (up to ~600ms to cover the exit + enter transition).
 	useEffect(() => {
-		const opts = current?.options ?? [];
-		if (focusSlot < opts.length) {
-			chipRefs.current[focusSlot]?.focus();
-		} else {
-			textareaRef.current?.focus();
-		}
+		let cancelled = false;
+		const tryFocus = () => {
+			if (cancelled) return;
+			const opts = current?.options ?? [];
+			const target = focusSlot < opts.length
+				? chipRefs.current[focusSlot]
+				: textareaRef.current;
+			if (target) {
+				target.focus();
+			} else {
+				requestAnimationFrame(tryFocus);
+			}
+		};
+		requestAnimationFrame(tryFocus);
+		return () => { cancelled = true; };
 	}, [focusSlot, index]);
 
 	const goTo = useCallback((next: number, dir: 1 | -1) => {
@@ -277,6 +288,7 @@ export function QuestionFocusMode({ title, content, onSave, onClose }: Props) {
 		setSaving(true);
 		try {
 			await onSave(reconstruct(content, answers));
+			onClose();
 		} finally {
 			setSaving(false);
 		}

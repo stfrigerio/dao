@@ -4,12 +4,16 @@ import { db } from '../db/index.js';
 import { objectives, tasks, phases, projects, documents } from '../db/schema.js';
 import { eq, and, isNull } from 'drizzle-orm';
 import { buildDiscoveryObjectivesPrompt } from './prompts/discoveryObjectives.js';
+import { buildDiscoveryQuestionsPrompt } from './prompts/discoveryQuestions.js';
+import { buildDiscoveryAnalysisPrompt } from './prompts/discoveryAnalysis.js';
+import { buildDiscoveryProductionPrompt } from './prompts/discoveryProduction.js';
 import { buildPlanningObjectivesPrompt } from './prompts/planningObjectives.js';
+import { buildPlanningQuestionsPrompt } from './prompts/planningQuestions.js';
+import { buildPlanningAnalysisPrompt } from './prompts/planningAnalysis.js';
+import { buildPlanningProductionPrompt } from './prompts/planningProduction.js';
 import { buildExecutionObjectivesPrompt } from './prompts/executionObjectives.js';
 import { buildReviewObjectivesPrompt } from './prompts/reviewObjectives.js';
-import { buildQuestionsPrompt } from './prompts/questions.js';
-import { buildAnalysisPrompt } from './prompts/analysis.js';
-import { buildProductionPrompt } from './prompts/production.js';
+
 
 export interface AnalysisResult {
 	completable: Array<{ taskUuid: string; taskName: string }>;
@@ -21,6 +25,7 @@ export interface AgentJob {
 	status: 'running' | 'done' | 'error';
 	error?: string;
 	result?: AnalysisResult;
+	progress?: { current: number; total: number };
 }
 
 const jobs = new Map<string, AgentJob>();
@@ -29,21 +34,50 @@ export function getJob(id: string): AgentJob | undefined {
 	return jobs.get(id);
 }
 
+type PhaseType = 'discovery' | 'planning' | 'execution' | 'review';
+
+function detectPhaseType(phaseName: string): PhaseType {
+	const name = phaseName.toLowerCase();
+	if (name.includes('planning')) return 'planning';
+	if (name.includes('execution')) return 'execution';
+	if (name.includes('review')) return 'review';
+	return 'discovery';
+}
+
+/** Gather all produced documents from earlier phases as context for later phases. */
+async function getPriorPhaseContext(projectId: number, currentPhaseOrderIndex: number): Promise<string | null> {
+	const priorPhases = await db.select().from(phases)
+		.where(eq(phases.projectId, projectId));
+	const earlier = priorPhases.filter((p) => p.orderIndex < currentPhaseOrderIndex);
+	if (earlier.length === 0) return null;
+
+	const priorPhaseIds = earlier.map((p) => p.id);
+	const allDocs = await db.select().from(documents)
+		.where(eq(documents.projectId, projectId));
+	const priorDocs = allDocs.filter(
+		(d) => d.phaseId !== null && priorPhaseIds.includes(d.phaseId) && !d.name.startsWith('Questions: ')
+	);
+	if (priorDocs.length === 0) return null;
+
+	return priorDocs.map((d) => `### ${d.name}\n\n${d.content}`).join('\n\n---\n\n');
+}
+
 function selectObjectivesPrompt(
 	phaseName: string,
 	projectName: string,
 	projectType: string,
 	projectDescription: string | null,
-	scope: string | null
+	scope: string | null,
+	priorContext: string | null
 ): string {
-	const name = phaseName.toLowerCase();
-	if (name.includes('planning')) return buildPlanningObjectivesPrompt(projectName, projectType, projectDescription, scope);
-	if (name.includes('execution')) return buildExecutionObjectivesPrompt(projectName, projectType, projectDescription, scope);
-	if (name.includes('review')) return buildReviewObjectivesPrompt(projectName, projectType, projectDescription, scope);
+	const type = detectPhaseType(phaseName);
+	if (type === 'planning') return buildPlanningObjectivesPrompt(projectName, projectType, projectDescription, scope);
+	if (type === 'execution') return buildExecutionObjectivesPrompt(projectName, projectType, projectDescription, scope, priorContext);
+	if (type === 'review') return buildReviewObjectivesPrompt(projectName, projectType, projectDescription, scope);
 	return buildDiscoveryObjectivesPrompt(projectName, projectType, projectDescription, scope);
 }
 
-export async function runPhaseObjectivesAgent(phaseUuid: string): Promise<string> {
+export async function runPhaseObjectivesAgent(phaseUuid: string, documentUuids?: string[]): Promise<string> {
 	const jobId = randomUUID();
 	jobs.set(jobId, { id: jobId, status: 'running' });
 
@@ -66,18 +100,31 @@ export async function runPhaseObjectivesAgent(phaseUuid: string): Promise<string
 					)
 				);
 
+			let priorContext: string | null;
+			if (documentUuids && documentUuids.length > 0) {
+				// Use only the selected documents as context
+				const allDocs = await db.select().from(documents).where(eq(documents.projectId, project.id));
+				const selected = allDocs.filter((d) => documentUuids.includes(d.uuid));
+				priorContext = selected.length > 0
+					? selected.map((d) => `### ${d.name}\n\n${d.content}`).join('\n\n---\n\n')
+					: null;
+			} else {
+				priorContext = await getPriorPhaseContext(project.id, phase.orderIndex);
+			}
 			const prompt = selectObjectivesPrompt(
 				phase.name,
 				project.name,
 				project.type,
 				project.description,
-				briefDoc?.content ?? null
+				briefDoc?.content ?? null,
+				priorContext
 			);
 			const raw = await runClaude(prompt);
 
 			// Strip markdown code fences if present
 			const json = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim();
-			const objectivesData: Array<{ name: string; tasks: string[] }> = JSON.parse(json);
+			type TaskEntry = string | { name: string; subtasks?: string[] };
+			const objectivesData: Array<{ name: string; tasks: TaskEntry[] }> = JSON.parse(json);
 
 			for (let i = 0; i < objectivesData.length; i++) {
 				const obj = objectivesData[i];
@@ -87,11 +134,24 @@ export async function runPhaseObjectivesAgent(phaseUuid: string): Promise<string
 					.returning();
 
 				for (let j = 0; j < obj.tasks.length; j++) {
-					await db.insert(tasks).values({
+					const entry = obj.tasks[j];
+					const taskName = typeof entry === 'string' ? entry : entry.name;
+					const subtaskNames = typeof entry === 'string' ? [] : (entry.subtasks || []);
+
+					const [task] = await db.insert(tasks).values({
 						objectiveId: objective.id,
-						name: obj.tasks[j],
+						name: taskName,
 						orderIndex: j,
-					});
+					}).returning();
+
+					for (let k = 0; k < subtaskNames.length; k++) {
+						await db.insert(tasks).values({
+							objectiveId: objective.id,
+							parentTaskId: task.id,
+							name: subtaskNames[k],
+							orderIndex: k,
+						});
+					}
 				}
 			}
 
@@ -131,7 +191,14 @@ export async function runObjectiveQuestionsAgent(objectiveUuid: string, userId: 
 					)
 				);
 
-			const prompt = buildQuestionsPrompt(project.name, project.description, briefDoc?.content ?? null, objective.name, objTasks.map(t => t.name));
+			const phaseType = detectPhaseType(phase.name);
+			let prompt: string;
+			if (phaseType === 'planning') {
+				const priorContext = await getPriorPhaseContext(project.id, phase.orderIndex);
+				prompt = buildPlanningQuestionsPrompt(project.name, project.description, briefDoc?.content ?? null, objective.name, objTasks.map(t => t.name), priorContext);
+			} else {
+				prompt = buildDiscoveryQuestionsPrompt(project.name, project.description, briefDoc?.content ?? null, objective.name, objTasks.map(t => t.name));
+			}
 			const content = await runClaude(prompt);
 
 			await db.insert(documents).values({
@@ -176,10 +243,14 @@ export async function runDocumentationAnalysisAgent(objectiveUuid: string): Prom
 			const [questionsDoc] = await db.select().from(documents).where(eq(documents.objectiveId, objective.id));
 			if (!questionsDoc?.content) throw new Error('No questions document found for this objective');
 
-			const prompt = buildAnalysisPrompt(
-				project.name, project.description, briefDoc?.content ?? null,
-				objective.name, objTasks, questionsDoc.content
-			);
+			const phaseType = detectPhaseType(phase.name);
+			let prompt: string;
+			if (phaseType === 'planning') {
+				const priorContext = await getPriorPhaseContext(project.id, phase.orderIndex);
+				prompt = buildPlanningAnalysisPrompt(project.name, project.description, briefDoc?.content ?? null, objective.name, objTasks, questionsDoc.content, priorContext);
+			} else {
+				prompt = buildDiscoveryAnalysisPrompt(project.name, project.description, briefDoc?.content ?? null, objective.name, objTasks, questionsDoc.content);
+			}
 
 			const raw = await runClaude(prompt);
 			const json = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim();
@@ -200,7 +271,8 @@ export async function runDocumentationProductionAgent(
 	taskUuids: string[]
 ): Promise<string> {
 	const jobId = randomUUID();
-	jobs.set(jobId, { id: jobId, status: 'running' });
+	const total = taskUuids.length;
+	jobs.set(jobId, { id: jobId, status: 'running', progress: { current: 0, total } });
 
 	(async () => {
 		try {
@@ -220,14 +292,30 @@ export async function runDocumentationProductionAgent(
 			const [questionsDoc] = await db.select().from(documents).where(eq(documents.objectiveId, objective.id));
 			if (!questionsDoc?.content) throw new Error('No questions document found');
 
-			for (const taskUuid of taskUuids) {
-				const [task] = await db.select().from(tasks).where(eq(tasks.uuid, taskUuid));
-				if (!task) continue;
+			// Resolve all task names upfront so each prompt knows its siblings
+			const allTasks = await Promise.all(
+				taskUuids.map(async (uuid) => {
+					const [t] = await db.select().from(tasks).where(eq(tasks.uuid, uuid));
+					return t;
+				})
+			);
+			const allTaskNames = allTasks.filter(Boolean).map((t) => t.name);
 
-				const prompt = buildProductionPrompt(
-					project.name, project.description, briefDoc?.content ?? null,
-					objective.name, task.name, questionsDoc.content
-				);
+			let completed = 0;
+			for (const taskUuid of taskUuids) {
+				const task = allTasks.find((t) => t?.uuid === taskUuid);
+				if (!task) continue;
+				jobs.set(jobId, { id: jobId, status: 'running', progress: { current: completed + 1, total } });
+
+				const siblingTasks = allTaskNames.filter((n) => n !== task.name);
+				const phaseType = detectPhaseType(phase.name);
+				let prompt: string;
+				if (phaseType === 'planning') {
+					const priorContext = await getPriorPhaseContext(project.id, phase.orderIndex);
+					prompt = buildPlanningProductionPrompt(project.name, project.description, briefDoc?.content ?? null, objective.name, task.name, questionsDoc.content, priorContext, siblingTasks);
+				} else {
+					prompt = buildDiscoveryProductionPrompt(project.name, project.description, briefDoc?.content ?? null, objective.name, task.name, questionsDoc.content, siblingTasks);
+				}
 
 				const content = await runClaude(prompt);
 
@@ -245,6 +333,7 @@ export async function runDocumentationProductionAgent(
 				});
 
 				await db.update(tasks).set({ completed: true }).where(eq(tasks.uuid, taskUuid));
+				completed++;
 			}
 
 			// Auto-complete objective when all its tasks are done

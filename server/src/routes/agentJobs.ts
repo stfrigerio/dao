@@ -22,7 +22,8 @@ router.post('/phases/:uuid/generate-objectives', requireAuth, async (req: AuthRe
 			res.status(404).json({ error: 'Phase not found' });
 			return;
 		}
-		const jobId = await runPhaseObjectivesAgent(phaseUuid);
+		const { documentUuids } = req.body as { documentUuids?: string[] };
+		const jobId = await runPhaseObjectivesAgent(phaseUuid, documentUuids);
 		res.json({ jobId });
 	} catch (err) {
 		next(err);

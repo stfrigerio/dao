@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => {
 	return {
 		plugins: [react(), tsconfigPaths()],
 		server: {
-			port: 5173,
+			host: '0.0.0.0',
+			port: 10000,
 			open: true,
 			proxy: {
 				'/api': {

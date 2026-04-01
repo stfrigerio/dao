@@ -62,6 +62,7 @@ export const objectives = pgTable('objectives', {
 	description: text('description'),
 	orderIndex: integer('order_index').notNull().default(0),
 	completed: boolean('completed').notNull().default(false),
+	linearProjectId: text('linear_project_id'),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -72,9 +73,11 @@ export const tasks = pgTable('tasks', {
 	objectiveId: integer('objective_id')
 		.references(() => objectives.id, { onDelete: 'cascade' })
 		.notNull(),
+	parentTaskId: integer('parent_task_id'),
 	name: text('name').notNull(),
 	description: text('description'),
 	completed: boolean('completed').notNull().default(false),
+	linearIssueId: text('linear_issue_id'),
 	orderIndex: integer('order_index').notNull().default(0),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

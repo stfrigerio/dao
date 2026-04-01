@@ -80,6 +80,9 @@
 }
 
 .groupLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
 	font-family: var(--font-family-mono);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
@@ -89,6 +92,26 @@
 	margin: 0;
 	padding-bottom: var(--spacing-xs);
 	border-bottom: 1px solid var(--color-border);
+	cursor: pointer;
+	user-select: none;
+}
+
+.groupLabel:hover {
+	color: var(--color-text-secondary);
+}
+
+.groupCount {
+	font-weight: var(--font-weight-normal);
+	color: var(--color-text-muted);
+	opacity: 0.6;
+	margin-left: auto;
+}
+
+.chevron {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
 }
 
 .groupDocs {
@@ -104,11 +127,20 @@
 }
 
 .subGroupLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-text-secondary);
 	margin: 0;
 	padding: var(--spacing-xs) 0;
+	cursor: pointer;
+	user-select: none;
+}
+
+.subGroupLabel:hover {
+	color: var(--color-text);
 }
 
 .card {
@@ -170,6 +202,13 @@
 	min-width: 0;
 }
 
+.badgeSlot {
+	width: 90px;
+	flex-shrink: 0;
+	display: flex;
+	justify-content: flex-end;
+}
+
 .reviewedBadge {
 	display: inline-flex;
 	align-items: center;
@@ -184,10 +223,12 @@
 	letter-spacing: var(--letter-spacing-wider);
 	color: var(--color-success);
 	white-space: nowrap;
-	flex-shrink: 0;
 }
 
 .docMeta {
+	width: 80px;
+	flex-shrink: 0;
+	text-align: right;
 	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 	white-space: nowrap;

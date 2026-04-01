@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { getAuthToken } from './authToken';
+import { getAuthToken, authFetch } from './authToken';
 import { useToastStore } from './toast';
 import { useObjectiveStore } from './objectives';
 import { useDocumentStore } from './documents';
@@ -24,6 +24,7 @@ export interface AgentJob {
 	status: 'running' | 'done' | 'error';
 	error?: string;
 	result?: AnalysisResult;
+	progress?: { current: number; total: number };
 }
 
 interface AgentJobState {
@@ -31,7 +32,7 @@ interface AgentJobState {
 	objectiveJobs: Record<string, AgentJob>; // keyed by objectiveUuid
 	analysisJobs: Record<string, AgentJob>; // keyed by objectiveUuid
 	productionJobs: Record<string, AgentJob>; // keyed by objectiveUuid
-	startPhaseObjectives: (phaseUuid: string) => Promise<void>;
+	startPhaseObjectives: (phaseUuid: string, documentUuids?: string[]) => Promise<void>;
 	startObjectiveQuestions: (objectiveUuid: string, projectUuid: string) => Promise<void>;
 	startDocumentationAnalysis: (objectiveUuid: string) => Promise<void>;
 	startDocumentationProduction: (
@@ -55,13 +56,14 @@ export const useAgentJobStore = create<AgentJobState>()(
 			analysisJobs: {},
 			productionJobs: {},
 
-			startPhaseObjectives: async (phaseUuid) => {
+			startPhaseObjectives: async (phaseUuid, documentUuids) => {
 				if (get().jobs[phaseUuid]?.status === 'running') return;
 
 				try {
-					const res = await fetch(`${API_BASE_URL}/phases/${phaseUuid}/generate-objectives`, {
+					const res = await authFetch(`${API_BASE_URL}/phases/${phaseUuid}/generate-objectives`, {
 						method: 'POST',
 						headers: getHeaders(),
+						body: JSON.stringify(documentUuids ? { documentUuids } : {}),
 					});
 					if (!res.ok) throw new Error(`HTTP ${res.status}`);
 					const { jobId } = await res.json();
@@ -70,15 +72,26 @@ export const useAgentJobStore = create<AgentJobState>()(
 						jobs: { ...state.jobs, [phaseUuid]: { jobId, status: 'running' } },
 					}));
 
+					let lostCount = 0;
+					const recover = () => {
+						set((state) => ({
+							jobs: { ...state.jobs, [phaseUuid]: { jobId, status: 'done' } },
+						}));
+						useObjectiveStore.getState().fetchObjectives(phaseUuid);
+						useToastStore.getState().success('Objectives and tasks generated.', 'Agent done');
+					};
 					const poll = async () => {
 						try {
-							const pollRes = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+							const pollRes = await authFetch(`${API_BASE_URL}/jobs/${jobId}`, {
 								headers: getHeaders(),
 							});
 							if (!pollRes.ok) {
+								lostCount++;
+								if (pollRes.status === 404 && lostCount >= 3) { recover(); return; }
 								setTimeout(poll, 3000);
 								return;
 							}
+							lostCount = 0;
 							const job = await pollRes.json();
 
 							if (job.status === 'done') {
@@ -103,6 +116,8 @@ export const useAgentJobStore = create<AgentJobState>()(
 								setTimeout(poll, 2000);
 							}
 						} catch {
+							lostCount++;
+							if (lostCount >= 3) { recover(); return; }
 							setTimeout(poll, 3000);
 						}
 					};
@@ -117,7 +132,7 @@ export const useAgentJobStore = create<AgentJobState>()(
 				if (get().objectiveJobs[objectiveUuid]?.status === 'running') return;
 
 				try {
-					const res = await fetch(
+					const res = await authFetch(
 						`${API_BASE_URL}/objectives/${objectiveUuid}/generate-questions`,
 						{
 							method: 'POST',
@@ -134,15 +149,29 @@ export const useAgentJobStore = create<AgentJobState>()(
 						},
 					}));
 
+					let lostCount = 0;
+					const recover = () => {
+						set((state) => ({
+							objectiveJobs: {
+								...state.objectiveJobs,
+								[objectiveUuid]: { jobId, status: 'done' },
+							},
+						}));
+						useDocumentStore.getState().fetchDocuments(projectUuid);
+						useToastStore.getState().success('Questions document ready.', 'Agent done');
+					};
 					const poll = async () => {
 						try {
-							const pollRes = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+							const pollRes = await authFetch(`${API_BASE_URL}/jobs/${jobId}`, {
 								headers: getHeaders(),
 							});
 							if (!pollRes.ok) {
+								lostCount++;
+								if (pollRes.status === 404 && lostCount >= 3) { recover(); return; }
 								setTimeout(poll, 3000);
 								return;
 							}
+							lostCount = 0;
 							const job = await pollRes.json();
 
 							if (job.status === 'done') {
@@ -174,6 +203,8 @@ export const useAgentJobStore = create<AgentJobState>()(
 								setTimeout(poll, 2000);
 							}
 						} catch {
+							lostCount++;
+							if (lostCount >= 3) { recover(); return; }
 							setTimeout(poll, 3000);
 						}
 					};
@@ -187,7 +218,7 @@ export const useAgentJobStore = create<AgentJobState>()(
 			startDocumentationAnalysis: async (objectiveUuid) => {
 				if (get().analysisJobs[objectiveUuid]?.status === 'running') return;
 				try {
-					const res = await fetch(
+					const res = await authFetch(
 						`${API_BASE_URL}/objectives/${objectiveUuid}/analyze-documentation`,
 						{ method: 'POST', headers: getHeaders() }
 					);
@@ -199,15 +230,29 @@ export const useAgentJobStore = create<AgentJobState>()(
 							[objectiveUuid]: { jobId, status: 'running' },
 						},
 					}));
+					let lostCount = 0;
+					const recoverLost = () => {
+						// Analysis result is transient — can't recover, must retry
+						set((state) => ({
+							analysisJobs: {
+								...state.analysisJobs,
+								[objectiveUuid]: { jobId, status: 'error', error: 'Job lost' },
+							},
+						}));
+						useToastStore.getState().error('Analysis interrupted — please try again.', 'Agent error');
+					};
 					const poll = async () => {
 						try {
-							const pollRes = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+							const pollRes = await authFetch(`${API_BASE_URL}/jobs/${jobId}`, {
 								headers: getHeaders(),
 							});
 							if (!pollRes.ok) {
+								lostCount++;
+								if (pollRes.status === 404 && lostCount >= 3) { recoverLost(); return; }
 								setTimeout(poll, 3000);
 								return;
 							}
+							lostCount = 0;
 							const job = await pollRes.json();
 							if (job.status === 'done') {
 								set((state) => ({
@@ -236,6 +281,8 @@ export const useAgentJobStore = create<AgentJobState>()(
 								setTimeout(poll, 2000);
 							}
 						} catch {
+							lostCount++;
+							if (lostCount >= 3) { recoverLost(); return; }
 							setTimeout(poll, 3000);
 						}
 					};
@@ -260,7 +307,7 @@ export const useAgentJobStore = create<AgentJobState>()(
 					},
 				}));
 				try {
-					const res = await fetch(
+					const res = await authFetch(
 						`${API_BASE_URL}/objectives/${objectiveUuid}/produce-documentation`,
 						{
 							method: 'POST',
@@ -281,15 +328,32 @@ export const useAgentJobStore = create<AgentJobState>()(
 							[objectiveUuid]: { jobId: '', status: 'done' },
 						},
 					}));
+					let lostCount = 0;
+					const recover = () => {
+						set((state) => ({
+							productionJobs: {
+								...state.productionJobs,
+								[objectiveUuid]: { jobId, status: 'done' },
+							},
+						}));
+						useObjectiveStore.getState().fetchObjectives(phaseUuid);
+						useDocumentStore.getState().fetchDocuments(projectUuid);
+						useToastStore
+							.getState()
+							.success('Documents produced and tasks completed.', 'Done');
+					};
 					const poll = async () => {
 						try {
-							const pollRes = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+							const pollRes = await authFetch(`${API_BASE_URL}/jobs/${jobId}`, {
 								headers: getHeaders(),
 							});
 							if (!pollRes.ok) {
+								lostCount++;
+								if (pollRes.status === 404 && lostCount >= 3) { recover(); return; }
 								setTimeout(poll, 3000);
 								return;
 							}
+							lostCount = 0;
 							const job = await pollRes.json();
 							if (job.status === 'done') {
 								set((state) => ({
@@ -316,9 +380,21 @@ export const useAgentJobStore = create<AgentJobState>()(
 								}));
 								useToastStore.getState().error('Production failed.', 'Agent error');
 							} else {
+								set((state) => ({
+									productionJobs: {
+										...state.productionJobs,
+										[objectiveUuid]: {
+											jobId,
+											status: 'running',
+											progress: job.progress,
+										},
+									},
+								}));
 								setTimeout(poll, 2000);
 							}
 						} catch {
+							lostCount++;
+							if (lostCount >= 3) { recover(); return; }
 							setTimeout(poll, 3000);
 						}
 					};

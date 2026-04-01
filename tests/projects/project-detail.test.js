@@ -17,7 +17,7 @@ afterAll(async () => {
 	await browser?.close();
 });
 
-describe('Project Brief — callout, DocEditor, and button gate', () => {
+describe('Project detail — brief, objectives, and tasks', () => {
 	// ── 1. Create project ─────────────────────────────────────────────────────
 
 	test('1. creates a project for the Project Brief flow', async () => {
@@ -199,9 +199,191 @@ describe('Project Brief — callout, DocEditor, and button gate', () => {
 		expect(isDisabled).toBe(false);
 	});
 
-	// ── 8. Delete the project via UI ─────────────────────────────────────────
+	// ── 8. Add an objective and verify it appears ──────────────────────────
 
-	test('8. deletes the project via UI', async () => {
+	test('8. adds an objective "User Research" in the Discovery panel', async () => {
+		await page.waitForFunction(
+			() =>
+				Array.from(document.querySelectorAll('button')).some(
+					(b) => b.innerText.trim() === 'Add'
+				),
+			{ timeout: 5000 }
+		);
+		await page.evaluate(() => {
+			const btn = Array.from(document.querySelectorAll('button')).find(
+				(b) => b.innerText.trim() === 'Add'
+			);
+			if (btn) btn.click();
+		});
+		await page.waitForSelector('input[placeholder="Objective name"]', { timeout: 5000 });
+		await page.type('input[placeholder="Objective name"]', 'User Research');
+		await page.keyboard.press('Enter');
+		await page.waitForFunction(
+			() => document.body.innerText.includes('User Research'),
+			{ timeout: 8000 }
+		);
+	});
+
+	// ── 9. Toggle objective complete/incomplete ─────────────────────────────
+
+	test('9. toggling the objective marks it complete then incomplete', async () => {
+		// Mark complete
+		await page.click('button[aria-label="mark complete"]');
+		await page.waitForSelector('button[aria-label="mark incomplete"]', { timeout: 5000 });
+
+		// Mark incomplete again
+		await page.click('button[aria-label="mark incomplete"]');
+		await page.waitForSelector('button[aria-label="mark complete"]', { timeout: 5000 });
+	});
+
+	// ── 10. Expand objective and add a task ──────────────────────────────────
+
+	test('10. expands the objective and adds a task "Interview stakeholders"', async () => {
+		// Click on the objective name to expand
+		await page.evaluate(() => {
+			const spans = Array.from(document.querySelectorAll('span'));
+			const obj = spans.find((s) => s.innerText.trim() === 'User Research');
+			if (obj) obj.click();
+		});
+
+		await page.waitForFunction(
+			() =>
+				Array.from(document.querySelectorAll('button')).some((b) =>
+					b.innerText.includes('Add task')
+				),
+			{ timeout: 5000 }
+		);
+
+		await page.evaluate(() => {
+			const btn = Array.from(document.querySelectorAll('button')).find((b) =>
+				b.innerText.includes('Add task')
+			);
+			if (btn) btn.click();
+		});
+
+		await page.waitForSelector('input[placeholder="Task name"]', { timeout: 5000 });
+		await page.type('input[placeholder="Task name"]', 'Interview stakeholders');
+		await page.keyboard.press('Enter');
+
+		await page.waitForFunction(
+			() => document.body.innerText.includes('Interview stakeholders'),
+			{ timeout: 8000 }
+		);
+	});
+
+	// ── 11. Toggle task complete/incomplete ──────────────────────────────────
+
+	test('11. clicking a task row toggles it complete then incomplete', async () => {
+		// Click the task row to mark complete (strikethrough)
+		await page.evaluate(() => {
+			const spans = Array.from(document.querySelectorAll('span'));
+			const taskSpan = spans.find((s) => s.innerText.trim() === 'Interview stakeholders');
+			if (taskSpan) taskSpan.closest('[class*="taskRow"]').click();
+		});
+
+		// Wait for the completed state (CheckSquare icon appears)
+		await page.waitForFunction(
+			() => {
+				const rows = Array.from(document.querySelectorAll('[class*="taskRow"]'));
+				return rows.some((r) => r.className.includes('taskDone'));
+			},
+			{ timeout: 5000 }
+		);
+
+		// Click again to mark incomplete
+		await page.evaluate(() => {
+			const spans = Array.from(document.querySelectorAll('span'));
+			const taskSpan = spans.find((s) => s.innerText.trim() === 'Interview stakeholders');
+			if (taskSpan) taskSpan.closest('[class*="taskRow"]').click();
+		});
+
+		await page.waitForFunction(
+			() => {
+				const rows = Array.from(document.querySelectorAll('[class*="taskRow"]'));
+				return rows.some(
+					(r) => r.innerText.includes('Interview stakeholders') && !r.className.includes('taskDone')
+				);
+			},
+			{ timeout: 5000 }
+		);
+	});
+
+	// ── 12. Edit task name ───────────────────────────────────────────────────
+
+	test('12. editing a task name via the edit button', async () => {
+		// Hover over the task row to reveal the edit button
+		const taskRow = await page.evaluateHandle(() => {
+			const spans = Array.from(document.querySelectorAll('span'));
+			const taskSpan = spans.find((s) => s.innerText.trim() === 'Interview stakeholders');
+			return taskSpan?.closest('[class*="taskRow"]') ?? null;
+		});
+		await taskRow.hover();
+
+		await page.waitForSelector('button[aria-label="edit task"]', { timeout: 5000 });
+		await page.click('button[aria-label="edit task"]');
+
+		// An inline input appears with the current task name
+		const input = await page.waitForSelector('[class*="editTaskInput"]', { timeout: 5000 });
+
+		// Clear and type new name
+		await input.click({ clickCount: 3 });
+		await page.keyboard.type('Interview key stakeholders');
+		await page.keyboard.press('Enter');
+
+		// Verify the updated name appears
+		await page.waitForFunction(
+			() => document.body.innerText.includes('Interview key stakeholders'),
+			{ timeout: 5000 }
+		);
+
+		// Old name should be gone
+		const bodyText = await page.evaluate(() => document.body.innerText);
+		expect(bodyText).not.toContain('Interview stakeholders');
+	});
+
+	// ── 13. Delete task ──────────────────────────────────────────────────────
+
+	test('13. deleting the task removes it from the objective', async () => {
+		// Hover to reveal delete button
+		const taskRow = await page.evaluateHandle(() => {
+			const spans = Array.from(document.querySelectorAll('span'));
+			const taskSpan = spans.find((s) => s.innerText.trim() === 'Interview key stakeholders');
+			return taskSpan?.closest('[class*="taskRow"]') ?? null;
+		});
+		await taskRow.hover();
+
+		await page.waitForSelector('button[aria-label="delete task"]', { timeout: 5000 });
+		await page.click('button[aria-label="delete task"]');
+
+		await page.waitForFunction(
+			() => !document.body.innerText.includes('Interview key stakeholders'),
+			{ timeout: 5000 }
+		);
+	});
+
+	// ── 14. Delete objective ─────────────────────────────────────────────────
+
+	test('14. deleting the objective removes it from the panel', async () => {
+		// Hover over the objective row to reveal the delete button
+		const objRow = await page.evaluateHandle(() => {
+			const spans = Array.from(document.querySelectorAll('span'));
+			const nameSpan = spans.find((s) => s.innerText.trim() === 'User Research');
+			return nameSpan?.parentElement ?? null;
+		});
+		await objRow.hover();
+
+		await page.waitForSelector('button[aria-label="delete objective"]', { timeout: 5000 });
+		await page.click('button[aria-label="delete objective"]');
+
+		await page.waitForFunction(
+			() => !document.body.innerText.includes('User Research'),
+			{ timeout: 8000 }
+		);
+	});
+
+	// ── 15. Delete the project via UI ─────────────────────────────────────────
+
+	test('15. deletes the project via UI', async () => {
 		await page.goto(projectUrl);
 		await page.waitForSelector('button[aria-label="delete project"]', { timeout: 8000 });
 		page.once('dialog', (dialog) => dialog.accept());

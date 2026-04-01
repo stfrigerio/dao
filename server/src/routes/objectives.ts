@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { objectives, tasks, phases } from '../db/schema';
+import { objectives, tasks, phases, projects } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
+import { updateIssueState } from '../services/linear';
 
 const router = Router();
 
@@ -22,12 +23,17 @@ router.get('/phases/:uuid/objectives', requireAuth, async (req: AuthRequest, res
 
 	const result = await Promise.all(
 		objs.map(async (obj) => {
-			const objTasks = await db
+			const allTasks = await db
 				.select()
 				.from(tasks)
 				.where(eq(tasks.objectiveId, obj.id))
 				.orderBy(tasks.orderIndex);
-			return { ...obj, tasks: objTasks };
+			const topLevel = allTasks.filter((t) => t.parentTaskId === null);
+			const nested = topLevel.map((t) => ({
+				...t,
+				subtasks: allTasks.filter((s) => s.parentTaskId === t.id),
+			}));
+			return { ...obj, tasks: nested };
 		})
 	);
 	res.json(result);
@@ -136,11 +142,24 @@ router.patch('/tasks/:uuid/complete', requireAuth, async (req: AuthRequest, res)
 
 	res.json(task);
 
-	// Auto-complete objective when all its tasks are done (fire-and-forget after response)
+	// Auto-complete objective + push to Linear (fire-and-forget after response)
 	(async () => {
 		const siblingTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, task.objectiveId));
 		const allDone = siblingTasks.every((t) => t.completed);
 		await db.update(objectives).set({ completed: allDone, updatedAt: new Date() }).where(eq(objectives.id, task.objectiveId));
+
+		if (task.linearIssueId) {
+			const [objective] = await db.select().from(objectives).where(eq(objectives.id, task.objectiveId));
+			if (objective) {
+				const [phase] = await db.select().from(phases).where(eq(phases.id, objective.phaseId));
+				if (phase) {
+					const [project] = await db.select().from(projects).where(eq(projects.id, phase.projectId));
+					if (project?.linearApiKey) {
+						await updateIssueState(project.linearApiKey, task.linearIssueId, Boolean(completed));
+					}
+				}
+			}
+		}
 	})().catch(() => {});
 });
 

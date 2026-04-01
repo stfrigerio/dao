@@ -60,6 +60,7 @@ export interface Objective {
 	description: string | null;
 	orderIndex: number;
 	completed: boolean;
+	linearProjectId: string | null;
 	createdAt: string;
 	updatedAt: string;
 	// Computed
@@ -70,12 +71,15 @@ export interface Task {
 	id: number;
 	uuid: string;
 	objectiveId: number;
+	parentTaskId: number | null;
 	name: string;
 	description: string | null;
 	completed: boolean;
+	linearIssueId: string | null;
 	orderIndex: number;
 	createdAt: string;
 	updatedAt: string;
+	subtasks?: Task[];
 }
 
 export interface Document {

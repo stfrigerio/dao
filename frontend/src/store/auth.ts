@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { User } from '../../../shared/types';
-import { setAuthToken } from './authToken';
+import { setAuthToken, refreshAccessToken } from './authToken';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -66,13 +66,24 @@ export const useAuthStore = create<AuthState>()(
 				},
 
 				fetchMe: async () => {
-					const { token } = get();
+					let { token } = get();
 					if (!token) return;
 					setAuthToken(token);
 					try {
-						const response = await fetch(`${API_BASE_URL}/auth/me`, {
+						let response = await fetch(`${API_BASE_URL}/auth/me`, {
 							headers: { Authorization: `Bearer ${token}` },
 						});
+						// Token expired — try refresh
+						if (response.status === 401) {
+							const newToken = await refreshAccessToken();
+							if (newToken) {
+								setAuthToken(newToken);
+								set({ token: newToken });
+								response = await fetch(`${API_BASE_URL}/auth/me`, {
+									headers: { Authorization: `Bearer ${newToken}` },
+								});
+							}
+						}
 						if (!response.ok) {
 							set({ user: null, token: null });
 							setAuthToken(null);

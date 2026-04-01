@@ -317,23 +317,26 @@ describe('Per-objective question generation', () => {
 
 	// ── 10. Expand the document and verify it has content ─────────────────────
 
-	test('10. clicking the "Questions: Requirements" document card expands it and shows content', async () => {
-		// The document card header button contains the doc name
+	test('10. clicking the "Questions: Requirements" document card opens a modal with its content', async () => {
+		// The document card uses a div.cardExpand with a span containing the doc name
 		const clicked = await page.evaluate(() => {
-			const btns = Array.from(document.querySelectorAll('button'));
-			const cardBtn = btns.find((b) => b.innerText.includes('Questions: Requirements'));
-			if (cardBtn) {
-				cardBtn.click();
-				return true;
+			const spans = Array.from(document.querySelectorAll('span'));
+			const nameSpan = spans.find((s) => s.innerText.includes('Questions: Requirements'));
+			if (nameSpan) {
+				const card = nameSpan.closest('[class*="cardExpand"]') || nameSpan.closest('[class*="card"]');
+				if (card) { card.click(); return true; }
 			}
 			return false;
 		});
 		expect(clicked).toBe(true);
 
-		// A <pre> element with the document content should appear after expansion
-		await page.waitForFunction(() => document.querySelector('pre') !== null, { timeout: 5000 });
-		const preContent = await page.$eval('pre', (el) => el.innerText.trim());
-		expect(preContent.length).toBeGreaterThan(0);
+		// A modal opens with a DocEditor containing the document content
+		await page.waitForSelector('.ProseMirror[contenteditable="true"]', { timeout: 5000 });
+		const editorText = await page.$eval('.ProseMirror', (el) => el.innerText.trim());
+		expect(editorText.length).toBeGreaterThan(0);
+
+		// Close the modal
+		await page.click('button[aria-label="close"]');
 	});
 
 	// ── 11. Delete the project via UI ─────────────────────────────────────────

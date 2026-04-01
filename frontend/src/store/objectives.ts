@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Objective, Task } from '../../../shared/types';
-import { getAuthToken } from './authToken';
+import { getAuthToken, authFetch } from './authToken';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -58,7 +58,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 			fetchObjectives: async (phaseUuid) => {
 				set({ loading: true, error: null });
 				try {
-					const res = await fetch(`${API_BASE_URL}/phases/${phaseUuid}/objectives`, {
+					const res = await authFetch(`${API_BASE_URL}/phases/${phaseUuid}/objectives`, {
 						headers: getHeaders(),
 					});
 					if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -77,7 +77,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 
 			createObjective: async (phaseUuid, name, description) => {
 				try {
-					const res = await fetch(`${API_BASE_URL}/phases/${phaseUuid}/objectives`, {
+					const res = await authFetch(`${API_BASE_URL}/phases/${phaseUuid}/objectives`, {
 						method: 'POST',
 						headers: getHeaders(),
 						body: JSON.stringify({
@@ -103,7 +103,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 
 			updateObjective: async (uuid, data) => {
 				try {
-					const res = await fetch(`${API_BASE_URL}/objectives/${uuid}`, {
+					const res = await authFetch(`${API_BASE_URL}/objectives/${uuid}`, {
 						method: 'PUT',
 						headers: getHeaders(),
 						body: JSON.stringify(data),
@@ -135,7 +135,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 					},
 				}));
 				try {
-					const res = await fetch(`${API_BASE_URL}/objectives/${uuid}/complete`, {
+					const res = await authFetch(`${API_BASE_URL}/objectives/${uuid}/complete`, {
 						method: 'PATCH',
 						headers: getHeaders(),
 						body: JSON.stringify({ completed }),
@@ -155,7 +155,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 			},
 
 			deleteObjective: async (uuid, phaseUuid) => {
-				const res = await fetch(`${API_BASE_URL}/objectives/${uuid}`, {
+				const res = await authFetch(`${API_BASE_URL}/objectives/${uuid}`, {
 					method: 'DELETE',
 					headers: getHeaders(),
 				});
@@ -176,7 +176,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 				);
 				const orderIndex = (objective?.tasks || []).length;
 				try {
-					const res = await fetch(`${API_BASE_URL}/objectives/${objectiveUuid}/tasks`, {
+					const res = await authFetch(`${API_BASE_URL}/objectives/${objectiveUuid}/tasks`, {
 						method: 'POST',
 						headers: getHeaders(),
 						body: JSON.stringify({ name, description, orderIndex }),
@@ -202,7 +202,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 
 			updateTask: async (uuid, objectiveUuid, phaseUuid, data) => {
 				try {
-					const res = await fetch(`${API_BASE_URL}/tasks/${uuid}`, {
+					const res = await authFetch(`${API_BASE_URL}/tasks/${uuid}`, {
 						method: 'PUT',
 						headers: getHeaders(),
 						body: JSON.stringify(data),
@@ -247,7 +247,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 					},
 				}));
 				try {
-					const res = await fetch(`${API_BASE_URL}/tasks/${uuid}/complete`, {
+					const res = await authFetch(`${API_BASE_URL}/tasks/${uuid}/complete`, {
 						method: 'PATCH',
 						headers: getHeaders(),
 						body: JSON.stringify({ completed }),
@@ -277,11 +277,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
 			},
 
 			deleteTask: async (uuid, objectiveUuid, phaseUuid) => {
-				const res = await fetch(`${API_BASE_URL}/tasks/${uuid}`, {
-					method: 'DELETE',
-					headers: getHeaders(),
-				});
-				if (!res.ok) return;
+				// Optimistic: remove immediately
 				set((state) => ({
 					objectives: {
 						...state.objectives,
@@ -292,6 +288,22 @@ export const useObjectiveStore = create<ObjectiveState>()(
 						),
 					},
 				}));
+				const res = await authFetch(`${API_BASE_URL}/tasks/${uuid}`, {
+					method: 'DELETE',
+					headers: getHeaders(),
+				});
+				if (!res.ok) {
+					// Revert: re-fetch to restore true state
+					const phaseRes = await authFetch(`${API_BASE_URL}/phases/${phaseUuid}/objectives`, {
+						headers: getHeaders(),
+					});
+					if (phaseRes.ok) {
+						const data = await phaseRes.json();
+						set((state) => ({
+							objectives: { ...state.objectives, [phaseUuid]: data },
+						}));
+					}
+				}
 			},
 		}),
 		{ name: 'ObjectiveStore' }

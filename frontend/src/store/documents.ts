@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Document } from '../../../shared/types';
-import { getAuthToken } from './authToken';
+import { getAuthToken, authFetch } from './authToken';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 export const FILE_BASE_URL = import.meta.env.VITE_API_URL
@@ -49,7 +49,7 @@ export const useDocumentStore = create<DocumentState>()(
 			fetchDocuments: async (projectUuid) => {
 				set({ loading: true, error: null });
 				try {
-					const res = await fetch(`${API_BASE_URL}/projects/${projectUuid}/documents`, {
+					const res = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/documents`, {
 						headers: getHeaders(),
 					});
 					if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -67,7 +67,7 @@ export const useDocumentStore = create<DocumentState>()(
 			},
 
 			createDocument: async (projectUuid, data) => {
-				const res = await fetch(`${API_BASE_URL}/projects/${projectUuid}/documents`, {
+				const res = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/documents`, {
 					method: 'POST',
 					headers: getHeaders(),
 					body: JSON.stringify(data),
@@ -84,7 +84,7 @@ export const useDocumentStore = create<DocumentState>()(
 			},
 
 			updateDocument: async (docUuid, content, projectUuid) => {
-				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+				const res = await authFetch(`${API_BASE_URL}/documents/${docUuid}`, {
 					method: 'PATCH',
 					headers: getHeaders(),
 					body: JSON.stringify({ content }),
@@ -102,7 +102,7 @@ export const useDocumentStore = create<DocumentState>()(
 			},
 
 			renameDocument: async (docUuid, name, projectUuid) => {
-				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+				const res = await authFetch(`${API_BASE_URL}/documents/${docUuid}`, {
 					method: 'PATCH',
 					headers: getHeaders(),
 					body: JSON.stringify({ name }),
@@ -120,7 +120,7 @@ export const useDocumentStore = create<DocumentState>()(
 			},
 
 			reviewDocument: async (docUuid, projectUuid, reviewed) => {
-				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+				const res = await authFetch(`${API_BASE_URL}/documents/${docUuid}`, {
 					method: 'PATCH',
 					headers: getHeaders(),
 					body: JSON.stringify({ humanReviewed: reviewed }),
@@ -138,7 +138,7 @@ export const useDocumentStore = create<DocumentState>()(
 			},
 
 			deleteDocument: async (docUuid, projectUuid) => {
-				const res = await fetch(`${API_BASE_URL}/documents/${docUuid}`, {
+				const res = await authFetch(`${API_BASE_URL}/documents/${docUuid}`, {
 					method: 'DELETE',
 					headers: getHeaders(),
 				});
@@ -157,7 +157,7 @@ export const useDocumentStore = create<DocumentState>()(
 				const formData = new FormData();
 				formData.append('file', file);
 				if (phaseId !== undefined) formData.append('phaseId', String(phaseId));
-				const res = await fetch(`${API_BASE_URL}/projects/${projectUuid}/documents/upload`, {
+				const res = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/documents/upload`, {
 					method: 'POST',
 					headers: getAuthHeaders(),
 					body: formData,

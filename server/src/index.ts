@@ -17,10 +17,11 @@ import { errorHandler } from './middleware/errorHandler';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:10000').split(',');
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:10000,https://dao.stefanofrigerio.dev').split(',');
+const isPrivateOrigin = (origin: string) => /^https?:\/\/(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(origin);
 app.use(cors({
 	origin: (origin, callback) => {
-		if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+		if (!origin || allowedOrigins.includes(origin) || isPrivateOrigin(origin)) callback(null, true);
 		else callback(new Error(`CORS: origin ${origin} not allowed`));
 	},
 	credentials: true,
@@ -41,8 +42,15 @@ app.use('/api', agentJobsRouter);
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-	console.log(`Server running on http://localhost:${PORT}`);
+// Serve frontend build in production
+const frontendBuild = path.join(__dirname, '../../frontend/build');
+app.use(express.static(frontendBuild));
+app.get('*', (_req, res) => {
+	res.sendFile(path.join(frontendBuild, 'index.html'));
+});
+
+app.listen(Number(PORT), '0.0.0.0', () => {
+	console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
 
 export default app;

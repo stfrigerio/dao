@@ -50,6 +50,20 @@
       "when": 1774900000000,
       "tag": "0006_linear_api_key",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775046074491,
+      "tag": "0007_serious_metal_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775053299230,
+      "tag": "0008_purple_banshee",
+      "breakpoints": true
     }
   ]
 }

@@ -42,7 +42,7 @@
 		"vite-tsconfig-paths": "^5.1.4"
 	},
 	"scripts": {
-		"dev": "vite",
+		"dev": "vite --host",
 		"start:prod": "serve -s build -l 3001",
 		"build": "npm run check && vite build",
 		"typecheck": "tsc --noEmit",

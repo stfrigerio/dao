@@ -4,6 +4,7 @@ import { launchBrowser, login, BASE_URL, waitForText, apiCleanupProject } from '
 let browser;
 let page;
 const projectName = `Test Project ${Date.now()}`;
+const projectDescription = 'E2E test project for creation flow';
 
 beforeAll(async () => {
 	browser = await launchBrowser();
@@ -12,28 +13,29 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	await apiCleanupProject(projectName); // safety net: deletes project if UI delete test failed
+	await apiCleanupProject(projectName);
 	await browser?.close();
 });
 
 describe('Projects', () => {
 	test('navigates to projects page', async () => {
 		await page.goto(`${BASE_URL}/projects`);
-		await page.waitForSelector('h1, h2', { timeout: 5000 });
+		await page.waitForSelector('h1', { timeout: 5000 });
 		expect(page.url()).toContain('/projects');
 	});
 
 	test('opens new project modal', async () => {
 		await page.waitForFunction(
-			() => Array.from(document.querySelectorAll('button')).some(
-				(b) => b.innerText.toLowerCase().includes('new') || b.innerText.includes('+')
-			),
+			() =>
+				Array.from(document.querySelectorAll('button')).some(
+					(b) => b.innerText.toLowerCase().includes('new project')
+				),
 			{ timeout: 5000 }
 		);
 		const buttons = await page.$$('button');
 		for (const btn of buttons) {
 			const text = await btn.evaluate((el) => el.innerText);
-			if (text.toLowerCase().includes('new') || text.includes('+')) {
+			if (text.toLowerCase().includes('new project')) {
 				await btn.click();
 				break;
 			}
@@ -41,21 +43,44 @@ describe('Projects', () => {
 		await page.waitForSelector('input[placeholder="Project name"]', { timeout: 5000 });
 	});
 
-	test('creates a new project', async () => {
+	test('fills in the project name and description', async () => {
 		await page.type('input[placeholder="Project name"]', projectName);
+		await page.type('textarea[placeholder="What is this project about?"]', projectDescription);
+		const value = await page.$eval(
+			'input[placeholder="Project name"]',
+			(el) => el.value
+		);
+		expect(value).toBe(projectName);
+	});
+
+	test('selects the Personal project type', async () => {
+		const buttons = await page.$$('button[type="button"]');
+		for (const btn of buttons) {
+			const text = await btn.evaluate((el) => el.innerText);
+			if (text.trim() === 'Personal') {
+				await btn.click();
+				break;
+			}
+		}
+		await page.waitForFunction(() => {
+			const btns = Array.from(document.querySelectorAll('button[type="button"]'));
+			const personal = btns.find((b) => b.innerText.trim() === 'Personal');
+			return personal && personal.className.split(' ').length > 1;
+		}, { timeout: 3000 });
+	});
+
+	test('submits the form and shows toast', async () => {
 		await page.click('button[type="submit"]');
 		await page.waitForFunction(
-			(name) => document.body.innerText.includes(name),
-			{ timeout: 10000 },
-			projectName
+			() => !document.querySelector('input[placeholder="Project name"]'),
+			{ timeout: 15000 }
 		);
+		await waitForText(page, `Project "${projectName}" created`, 10000);
 	});
 
 	test('project appears in list after navigation', async () => {
-		// Navigate away and back (SPA navigation, not a full reload — store stays intact)
 		await page.click('a[href="/dashboard"], a[href*="dashboard"]').catch(() => {});
 		await page.goto(`${BASE_URL}/projects`);
-		// Wait for the store's items to render — may need to wait for fetch
 		await page.waitForFunction(
 			(name) => document.body.innerText.includes(name),
 			{ timeout: 10000 },
@@ -80,6 +105,11 @@ describe('Projects', () => {
 		expect(page.url()).toMatch(/\/projects\/.+/);
 	});
 
+	test('detail page shows the project name and description', async () => {
+		await waitForText(page, projectName, 8000);
+		await waitForText(page, projectDescription, 8000);
+	});
+
 	test('project detail shows all 5 phases', async () => {
 		await page.waitForNetworkIdle({ timeout: 5000 }).catch(() => {});
 		for (const phase of ['Discovery', 'Planning', 'Execution', 'Review', 'Done']) {
@@ -88,13 +118,11 @@ describe('Projects', () => {
 	});
 
 	test('members tab loads user list', async () => {
-		// Click Members tab and verify it renders content (not just a static label)
 		const buttons = await page.$$('button');
 		for (const btn of buttons) {
 			const text = await btn.evaluate((el) => el.innerText);
 			if (text.trim() === 'Members') { await btn.click(); break; }
 		}
-		// Admin user should appear as a project member
 		await waitForText(page, 'admin@dao.local', 5000);
 	});
 
@@ -105,7 +133,6 @@ describe('Projects', () => {
 			() => window.location.pathname === '/projects',
 			{ timeout: 8000 }
 		);
-		// Confirm the project is no longer in the list
 		await page.waitForFunction(
 			(name) => !document.body.innerText.includes(name),
 			{ timeout: 10000 },

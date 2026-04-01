@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Project } from '../../../shared/types';
-import { getAuthToken } from './authToken';
+import { getAuthToken, authFetch } from './authToken';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const CACHE_TTL = 5 * 60 * 1000;
@@ -50,7 +50,7 @@ export const useProjectStore = create<ProjectState>()(
 
 				set({ loading: true, error: null });
 				try {
-					const response = await fetch(`${API_BASE_URL}/projects`, {
+					const response = await authFetch(`${API_BASE_URL}/projects`, {
 						headers: getHeaders(),
 					});
 					if (response.status === 401) {
@@ -74,7 +74,7 @@ export const useProjectStore = create<ProjectState>()(
 					operationLoading: { ...state.operationLoading, [opKey]: true },
 				}));
 				try {
-					const response = await fetch(`${API_BASE_URL}/projects/${uuid}`, {
+					const response = await authFetch(`${API_BASE_URL}/projects/${uuid}`, {
 						headers: getHeaders(),
 					});
 					if (!response.ok) {
@@ -114,7 +114,7 @@ export const useProjectStore = create<ProjectState>()(
 						updatedAt?: string;
 					};
 					const isNew = !item.uuid;
-					const response = await fetch(
+					const response = await authFetch(
 						`${API_BASE_URL}/projects${isNew ? '' : `/${item.uuid}`}`,
 						{
 							method: isNew ? 'POST' : 'PUT',
@@ -152,7 +152,7 @@ export const useProjectStore = create<ProjectState>()(
 					error: null,
 				}));
 				try {
-					const response = await fetch(`${API_BASE_URL}/projects/${uuid}`, {
+					const response = await authFetch(`${API_BASE_URL}/projects/${uuid}`, {
 						method: 'DELETE',
 						headers: getHeaders(),
 					});
@@ -178,7 +178,7 @@ export const useProjectStore = create<ProjectState>()(
 			invalidateCache: () => set({ lastFetch: null }),
 
 			setCurrentPhase: async (projectUuid, phaseUuid) => {
-				const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}`, {
+				const response = await authFetch(`${API_BASE_URL}/projects/${projectUuid}`, {
 					method: 'PUT',
 					headers: getHeaders(),
 					body: JSON.stringify({ currentPhaseUuid: phaseUuid }),
@@ -199,7 +199,7 @@ export const useProjectStore = create<ProjectState>()(
 			},
 
 			fetchMembers: async (projectUuid) => {
-				const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}/members`, {
+				const response = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/members`, {
 					headers: getHeaders(),
 				});
 				if (!response.ok) return;
@@ -210,7 +210,7 @@ export const useProjectStore = create<ProjectState>()(
 			},
 
 			addMember: async (projectUuid, userId, role) => {
-				const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}/members`, {
+				const response = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/members`, {
 					method: 'POST',
 					headers: getHeaders(),
 					body: JSON.stringify({ userId, role }),
@@ -219,7 +219,7 @@ export const useProjectStore = create<ProjectState>()(
 			},
 
 			removeMember: async (projectUuid, userId) => {
-				const response = await fetch(
+				const response = await authFetch(
 					`${API_BASE_URL}/projects/${projectUuid}/members/${userId}`,
 					{ method: 'DELETE', headers: getHeaders() }
 				);
@@ -227,7 +227,7 @@ export const useProjectStore = create<ProjectState>()(
 			},
 
 			linkLinear: async (projectUuid, apiKey) => {
-				const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}/linear`, {
+				const response = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/linear`, {
 					method: 'POST',
 					headers: getHeaders(),
 					body: JSON.stringify({ apiKey }),

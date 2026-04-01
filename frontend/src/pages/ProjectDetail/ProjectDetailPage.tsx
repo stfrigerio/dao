@@ -81,6 +81,13 @@ export function ProjectDetailPage() {
 					Phases
 				</button>
 				<button
+					className={`${styles.tab} ${activeTab === 'documents' ? styles.tabActive : ''}`}
+					onClick={() => setActiveTab('documents')}
+				>
+					<FileText size={14} />
+					Documents
+				</button>
+				<button
 					className={`${styles.tab} ${activeTab === 'linear' ? styles.tabActive : ''}`}
 					onClick={() => setActiveTab('linear')}
 				>
@@ -93,13 +100,6 @@ export function ProjectDetailPage() {
 				>
 					<Users size={14} />
 					Members
-				</button>
-				<button
-					className={`${styles.tab} ${activeTab === 'documents' ? styles.tabActive : ''}`}
-					onClick={() => setActiveTab('documents')}
-				>
-					<FileText size={14} />
-					Documents
 				</button>
 			</div>
 

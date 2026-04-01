@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Trash2, ShieldCheck, Upload, Download } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FileText, Trash2, ShieldCheck, Upload, Download, ChevronDown } from 'lucide-react';
 import type { Document, Project } from '../../../../../../shared/types';
 import { useDocumentStore, FILE_BASE_URL } from '@/store/documents';
 import { usePhaseStore } from '@/store/phases';
@@ -82,16 +83,18 @@ function DocCard({ doc, projectUuid }: { doc: Document; projectUuid: string }) {
 								{doc.name}
 							</span>
 						)}
+						{isFile && fileHref && <Download size={14} className={styles.docIcon} />}
+					</div>
+					<span className={styles.badgeSlot}>
 						{doc.humanReviewed && (
 							<span className={styles.reviewedBadge}>
 								<ShieldCheck size={11} /> REVIEWED
 							</span>
 						)}
-						<span className={styles.docMeta}>
-							{new Date(doc.createdAt).toLocaleDateString()}
-						</span>
-						{isFile && fileHref && <Download size={14} className={styles.docIcon} />}
-					</div>
+					</span>
+					<span className={styles.docMeta}>
+						{new Date(doc.createdAt).toLocaleDateString()}
+					</span>
 					<button
 						className={`${styles.reviewBtn} ${doc.humanReviewed ? styles.reviewBtnDone : ''}`}
 						onClick={() => reviewDocument(doc.uuid, projectUuid, !doc.humanReviewed)}
@@ -134,6 +137,13 @@ export function DocumentsTab({ project }: DocumentsTabProps) {
 	const { objectives, fetchObjectives } = useObjectiveStore();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [uploading, setUploading] = useState(false);
+	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+	const toggle = (key: string) =>
+		setCollapsed((prev) => {
+			const next = new Set(prev);
+			next.has(key) ? next.delete(key) : next.add(key);
+			return next;
+		});
 
 	const projectDocs = documents[project.uuid] || [];
 	const projectPhases = (phases[project.uuid] || [])
@@ -193,12 +203,34 @@ export function DocumentsTab({ project }: DocumentsTabProps) {
 				<div className={styles.list}>
 					{projectLevelDocs.length > 0 && (
 						<div className={styles.group}>
-							<p className={styles.groupLabel}>Project</p>
-							<div className={styles.groupDocs}>
-								{projectLevelDocs.map((doc) => (
-									<DocCard key={doc.uuid} doc={doc} projectUuid={project.uuid} />
-								))}
-							</div>
+							<p className={styles.groupLabel} onClick={() => toggle('project')}>
+								<motion.span
+									animate={{ rotate: collapsed.has('project') ? -90 : 0 }}
+									transition={{ duration: 0.2 }}
+									className={styles.chevron}
+								>
+									<ChevronDown size={12} />
+								</motion.span>
+								Project
+							</p>
+							<AnimatePresence initial={false}>
+								{!collapsed.has('project') && (
+									<motion.div
+										key="project-docs"
+										initial={{ height: 0, opacity: 0 }}
+										animate={{ height: 'auto', opacity: 1 }}
+										exit={{ height: 0, opacity: 0 }}
+										transition={{ duration: 0.25, ease: 'easeInOut' }}
+										style={{ overflow: 'hidden' }}
+									>
+										<div className={styles.groupDocs}>
+											{projectLevelDocs.map((doc) => (
+												<DocCard key={doc.uuid} doc={doc} projectUuid={project.uuid} />
+											))}
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
@@ -216,32 +248,80 @@ export function DocumentsTab({ project }: DocumentsTabProps) {
 							(d) => d.objectiveId !== null && !knownObjIds.has(d.objectiveId)
 						);
 
+						const phaseKey = `phase-${phase.uuid}`;
 						return (
 							<div key={phase.uuid} className={styles.group}>
-								<p className={styles.groupLabel}>{phase.name}</p>
-								<div className={styles.groupDocs}>
-									{phaseOnlyDocs.map((doc) => (
-										<DocCard key={doc.uuid} doc={doc} projectUuid={project.uuid} />
-									))}
-									{objectivesWithDocs.map((obj) => {
-										const objDocs = phaseDocs.filter((d) => d.objectiveId === obj.id);
-										return (
-											<div key={obj.uuid} className={styles.subGroup}>
-												<p className={styles.subGroupLabel}>{obj.name}</p>
-												{objDocs.map((doc) => (
-													<DocCard
-														key={doc.uuid}
-														doc={doc}
-														projectUuid={project.uuid}
-													/>
+								<p className={styles.groupLabel} onClick={() => toggle(phaseKey)}>
+									<motion.span
+										animate={{ rotate: collapsed.has(phaseKey) ? -90 : 0 }}
+										transition={{ duration: 0.2 }}
+										className={styles.chevron}
+									>
+										<ChevronDown size={12} />
+									</motion.span>
+									{phase.name}
+									<span className={styles.groupCount}>{phaseDocs.length}</span>
+								</p>
+								<AnimatePresence initial={false}>
+									{!collapsed.has(phaseKey) && (
+										<motion.div
+											key={phaseKey}
+											initial={{ height: 0, opacity: 0 }}
+											animate={{ height: 'auto', opacity: 1 }}
+											exit={{ height: 0, opacity: 0 }}
+											transition={{ duration: 0.25, ease: 'easeInOut' }}
+											style={{ overflow: 'hidden' }}
+										>
+											<div className={styles.groupDocs}>
+												{phaseOnlyDocs.map((doc) => (
+													<DocCard key={doc.uuid} doc={doc} projectUuid={project.uuid} />
+												))}
+												{objectivesWithDocs.map((obj) => {
+													const objDocs = phaseDocs.filter((d) => d.objectiveId === obj.id);
+													const objKey = `obj-${obj.uuid}`;
+													return (
+														<div key={obj.uuid} className={styles.subGroup}>
+															<p className={styles.subGroupLabel} onClick={() => toggle(objKey)}>
+																<motion.span
+																	animate={{ rotate: collapsed.has(objKey) ? -90 : 0 }}
+																	transition={{ duration: 0.2 }}
+																	className={styles.chevron}
+																>
+																	<ChevronDown size={11} />
+																</motion.span>
+																{obj.name}
+																<span className={styles.groupCount}>{objDocs.length}</span>
+															</p>
+															<AnimatePresence initial={false}>
+																{!collapsed.has(objKey) && (
+																	<motion.div
+																		key={objKey}
+																		initial={{ height: 0, opacity: 0 }}
+																		animate={{ height: 'auto', opacity: 1 }}
+																		exit={{ height: 0, opacity: 0 }}
+																		transition={{ duration: 0.2, ease: 'easeInOut' }}
+																		style={{ overflow: 'hidden' }}
+																	>
+																		{objDocs.map((doc) => (
+																			<DocCard
+																				key={doc.uuid}
+																				doc={doc}
+																				projectUuid={project.uuid}
+																			/>
+																		))}
+																	</motion.div>
+																)}
+															</AnimatePresence>
+														</div>
+													);
+												})}
+												{orphanDocs.map((doc) => (
+													<DocCard key={doc.uuid} doc={doc} projectUuid={project.uuid} />
 												))}
 											</div>
-										);
-									})}
-									{orphanDocs.map((doc) => (
-										<DocCard key={doc.uuid} doc={doc} projectUuid={project.uuid} />
-									))}
-								</div>
+										</motion.div>
+									)}
+								</AnimatePresence>
 							</div>
 						);
 					})}

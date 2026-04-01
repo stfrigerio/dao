@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
-export type Palette = 'red' | 'amber' | 'green' | 'white' | 'blue';
+export type Palette = 'red' | 'amber' | 'green' | 'white' | 'blue' | 'red-light' | 'amber-light' | 'green-light' | 'white-light' | 'blue-light';
 
 interface ThemeState {
 	palette: Palette;

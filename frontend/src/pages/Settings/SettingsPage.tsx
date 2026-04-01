@@ -16,6 +16,14 @@ const PALETTES: { id: Palette; label: string; color: string; bg: string }[] = [
 	{ id: 'blue', label: 'Blue', color: '#80b4ff', bg: '#000105' },
 ];
 
+const PALETTES_LIGHT: { id: Palette; label: string; color: string; bg: string }[] = [
+	{ id: 'red-light', label: 'Red', color: '#cc1818', bg: '#f8f0f0' },
+	{ id: 'amber-light', label: 'Amber', color: '#c07000', bg: '#f8f4ee' },
+	{ id: 'green-light', label: 'Green', color: '#1a9e38', bg: '#f0f8f0' },
+	{ id: 'white-light', label: 'White', color: '#555555', bg: '#f4f4f4' },
+	{ id: 'blue-light', label: 'Blue', color: '#3070cc', bg: '#f0f4f8' },
+];
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const getHeaders = () => {
@@ -122,6 +130,27 @@ export function SettingsPage() {
 				<p className={styles.sectionDesc}>CRT phosphor color</p>
 				<div className={styles.paletteGrid}>
 					{PALETTES.map((p) => (
+						<button
+							key={p.id}
+							className={`${styles.paletteSwatch} ${palette === p.id ? styles.paletteSwatchActive : ''}`}
+							onClick={() => setPalette(p.id)}
+						>
+							<span
+								className={styles.palettePreview}
+								style={{ background: p.bg, borderColor: p.color }}
+							>
+								<span
+									style={{ background: p.color }}
+									className={styles.paletteDot}
+								/>
+							</span>
+							<span className={styles.paletteLabel}>{p.label}</span>
+						</button>
+					))}
+				</div>
+				<p className={styles.sectionDesc}>Light mode</p>
+				<div className={styles.paletteGrid}>
+					{PALETTES_LIGHT.map((p) => (
 						<button
 							key={p.id}
 							className={`${styles.paletteSwatch} ${palette === p.id ? styles.paletteSwatchActive : ''}`}

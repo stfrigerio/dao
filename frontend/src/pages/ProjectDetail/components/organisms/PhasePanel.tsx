@@ -14,16 +14,17 @@ import {
 	MapPin,
 	Maximize2,
 	Pencil,
-	ExternalLink,
 } from 'lucide-react';
 import type { Project, Phase, Objective, Document } from '../../../../../../shared/types';
 import { useObjectiveStore } from '@/store/objectives';
 import { useAgentJobStore, type AnalysisResult } from '@/store/agentJobs';
 import { useDocumentStore } from '@/store/documents';
 import { useLinearStore } from '@/store/linear';
+import { usePhaseStore } from '@/store/phases';
 import { useProjectStore } from '@/store/projects';
 import { useToastStore } from '@/store/toast';
 import { Badge } from '@/components/atoms/Badge/Badge';
+import { LinearIcon } from '@/components/atoms/LinearIcon/LinearIcon';
 import { EmptyState } from '@/components/atoms/EmptyState/EmptyState';
 import { Modal } from '@/components/atoms/Modal/Modal';
 import { Callout } from '@/components/atoms/Callout/Callout';
@@ -61,12 +62,19 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		analysisJobs,
 	} = useAgentJobStore();
 	const { documents, fetchDocuments, createDocument, updateDocument } = useDocumentStore();
-	const { syncObjective } = useLinearStore();
+	const { syncObjective, syncExecutionToLinear } = useLinearStore();
+	const { phases: allPhases } = usePhaseStore();
 	const { setCurrentPhase, error: projectError, clearError } = useProjectStore();
 	const toast = useToastStore();
 	const [syncingObjective, setSyncingObjective] = useState<string | null>(null);
+	const [shaking, setShaking] = useState(false);
 
 	const isDiscoveryPhase = phase.orderIndex === 0;
+	const phaseName = phase.name.toLowerCase();
+	const isPlanningPhase = phaseName.includes('planning');
+	const isExecutionPhase = phaseName.includes('execution');
+	const isAgentPhase = isDiscoveryPhase || isPlanningPhase;
+	const [syncingExecution, setSyncingExecution] = useState(false);
 	const isCurrentPhase = project.currentPhaseUuid === phase.uuid;
 	const agentJob = getJobForPhase(phase.uuid);
 	const agentRunning = agentJob?.status === 'running';
@@ -91,6 +99,8 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 	const [showNewObjective, setShowNewObjective] = useState(false);
 	const [newTaskNames, setNewTaskNames] = useState<Record<string, string>>({});
 	const [showNewTask, setShowNewTask] = useState<Record<string, boolean>>({});
+	const [contextModal, setContextModal] = useState<{ targetPhaseUuid: string } | null>(null);
+	const [selectedDocUuids, setSelectedDocUuids] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		fetchObjectives(phase.uuid);
@@ -111,12 +121,19 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		}
 	}, [phaseObjectives, analysisJobs, analysisTarget, getAnalysisJob]);
 
-	// Keep activeQuestionsDoc in sync with the store so DocEditor sees updated content after save
+	// Keep activeQuestionsDoc / focusModeDoc in sync with the store so editors see updated content after save
 	useEffect(() => {
-		if (!activeQuestionsDoc) return;
-		const updated = projectDocs.find((d) => d.uuid === activeQuestionsDoc.uuid);
-		if (updated && updated.content !== activeQuestionsDoc.content) {
-			setActiveQuestionsDoc(updated);
+		if (activeQuestionsDoc) {
+			const updated = projectDocs.find((d) => d.uuid === activeQuestionsDoc.uuid);
+			if (updated && updated.content !== activeQuestionsDoc.content) {
+				setActiveQuestionsDoc(updated);
+			}
+		}
+		if (focusModeDoc) {
+			const updated = projectDocs.find((d) => d.uuid === focusModeDoc.uuid);
+			if (updated && updated.content !== focusModeDoc.content) {
+				setFocusModeDoc(updated);
+			}
 		}
 	}, [projectDocs]);
 
@@ -161,17 +178,18 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		}
 	};
 
-	const totalTasks = phaseObjectives.reduce((n, o) => n + (o.tasks?.length || 0), 0);
-	const doneTasks = phaseObjectives.reduce(
-		(n, o) => n + (o.tasks?.filter((t) => t.completed).length || 0),
-		0
-	);
+	const countAll = (tks: typeof phaseObjectives[0]['tasks']) =>
+		(tks || []).reduce((n, t) => n + 1 + (t.subtasks?.length || 0), 0);
+	const countDone = (tks: typeof phaseObjectives[0]['tasks']) =>
+		(tks || []).reduce((n, t) => n + (t.completed ? 1 : 0) + (t.subtasks?.filter((s) => s.completed).length || 0), 0);
+	const totalTasks = phaseObjectives.reduce((n, o) => n + countAll(o.tasks), 0);
+	const doneTasks = phaseObjectives.reduce((n, o) => n + countDone(o.tasks), 0);
 	const doneObjectives = phaseObjectives.filter((o) => o.completed).length;
 
 	// Phase exit criteria — qualitative milestones per phase
 	const phaseDocs = projectDocs.filter((d) => d.phaseId === phase.id);
 	const questionDocs = phaseDocs.filter((d) => d.name.startsWith('Questions: '));
-	const questionsAllAnswered = questionDocs.length > 0 && questionDocs.every((d) => d.content && !d.content.includes('_answer here_'));
+	const questionsAllAnswered = questionDocs.length > 0 && questionDocs.every((d) => d.content && !d.content.includes('> _answer here_'));
 	const producedDocs = phaseDocs.filter((d) => !d.name.startsWith('Questions: ') && d.objectiveId !== null);
 	const allReviewed = phaseDocs.length > 0 && phaseDocs.every((d) => d.humanReviewed);
 
@@ -183,16 +201,23 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 		{ label: 'Human reviewed', done: allReviewed },
 	];
 
+	const planningCriteria = [
+		{ label: 'Objectives defined', done: phaseObjectives.length > 0 },
+		{ label: 'Questions answered', done: questionsAllAnswered },
+		{ label: 'Specs produced', done: producedDocs.length > 0 },
+		{ label: 'Human reviewed', done: allReviewed },
+	];
+
 	const defaultCriteria = [
 		{ label: 'Objectives defined', done: phaseObjectives.length > 0 },
 		{ label: 'Tasks completed', done: totalTasks > 0 && doneTasks === totalTasks },
 		{ label: 'Human reviewed', done: allReviewed },
 	];
 
-	const criteria = isDiscoveryPhase ? discoveryCriteria : defaultCriteria;
+	const criteria = isDiscoveryPhase ? discoveryCriteria : isPlanningPhase ? planningCriteria : defaultCriteria;
 
 	return (
-		<div className={styles.panel}>
+		<div className={`${styles.panel} ${shaking ? styles.shake : ''}`}>
 			<div className={styles.panelHeader}>
 				<h3 className={styles.panelTitle}>{phase.name}</h3>
 				<div className={styles.panelActions}>
@@ -215,13 +240,13 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						<MapPin size={12} />
 						{isCurrentPhase ? 'CURRENT' : 'SET AS CURRENT'}
 					</button>
-					{isDiscoveryPhase && (
+					{isAgentPhase && (
 						<button
 							className={styles.agentButton}
 							onClick={() => startPhaseObjectives(phase.uuid)}
-							disabled={agentRunning || !briefHasContent}
-							title={!briefHasContent ? 'Write a Project Brief first' : undefined}
-							aria-label="run discovery agent"
+							disabled={agentRunning || (isDiscoveryPhase && !briefHasContent)}
+							title={isDiscoveryPhase && !briefHasContent ? 'Write a Project Brief first' : undefined}
+							aria-label="generate objectives"
 						>
 							{agentRunning ? (
 								<>
@@ -291,6 +316,35 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						</button>
 					</div>
 
+					{isExecutionPhase && project.linearApiKey && phaseObjectives.length > 0
+						&& !phaseObjectives.every((o) => o.linearProjectId) && (
+						<button
+							className={styles.generatePlanButton}
+							onClick={async () => {
+								setSyncingExecution(true);
+								const ok = await syncExecutionToLinear(project.uuid);
+								setSyncingExecution(false);
+								if (ok) {
+									toast.success('Execution synced to Linear.');
+									fetchObjectives(phase.uuid);
+								} else {
+									toast.error('Failed to sync to Linear.');
+								}
+							}}
+							disabled={syncingExecution}
+						>
+							{syncingExecution ? (
+								<>
+									<Loader2 size={16} className={styles.spin} /> SYNCING TO LINEAR…
+								</>
+							) : (
+								<>
+									<LinearIcon size={16} /> SYNC TO LINEAR
+								</>
+							)}
+						</button>
+					)}
+
 					{phaseObjectives.length === 0 && !showNewObjective && (
 						<EmptyState message="No objectives yet." />
 					)}
@@ -298,8 +352,8 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 					<div className={styles.objectiveList}>
 						{phaseObjectives.map((obj) => {
 							const expanded = expandedObjectives.has(obj.uuid);
-							const taskCount = obj.tasks?.length || 0;
-							const doneTaskCount = obj.tasks?.filter((t) => t.completed).length || 0;
+							const taskCount = countAll(obj.tasks);
+							const doneTaskCount = countDone(obj.tasks);
 
 							const questionsDoc =
 								projectDocs.find((d) => d.objectiveId === obj.id) ??
@@ -308,7 +362,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 							const questionsAnswered =
 								questionsLinked &&
 								!!questionsDoc?.content &&
-								!questionsDoc.content.includes('_answer here_');
+								!questionsDoc.content.includes('> _answer here_');
 
 							return (
 								<div
@@ -343,7 +397,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 											)}
 										</button>
 										<span className={styles.objectiveName}>{obj.name}</span>
-										{isDiscoveryPhase &&
+										{isAgentPhase &&
 											(() => {
 												const qJob = getJobForObjective(obj.uuid);
 												const qRunning = qJob?.status === 'running';
@@ -403,7 +457,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 																				}
 																			/>{' '}
 																			{isProducing
-																				? 'PRODUCING…'
+																				? `PRODUCING${productionJob?.progress ? ` ${productionJob.progress.current}/${productionJob.progress.total}` : ''}…`
 																				: 'ANALYSING…'}
 																		</>
 																	) : (
@@ -460,25 +514,39 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 											)}
 										</div>
 										{project.linearApiKey && (
-											<button
-												className={styles.syncButton}
-												disabled={syncingObjective === obj.uuid}
-												onClick={async (e) => {
-													e.stopPropagation();
-													setSyncingObjective(obj.uuid);
-													const ok = await syncObjective(project.uuid, obj.uuid);
-													setSyncingObjective(null);
-													if (ok) toast.success(`"${obj.name}" synced to Linear.`);
-													else toast.error('Failed to sync to Linear.');
-												}}
-												aria-label="sync to linear"
-											>
-												{syncingObjective === obj.uuid ? (
-													<Loader2 size={13} className={styles.spin} />
-												) : (
-													<ExternalLink size={13} />
-												)}
-											</button>
+											obj.linearProjectId ? (
+												<span
+													className={styles.syncedIcon}
+													title="Synced to Linear"
+												>
+													<LinearIcon size={13} />
+												</span>
+											) : (
+												<button
+													className={styles.syncButton}
+													disabled={syncingObjective === obj.uuid}
+													onClick={async (e) => {
+														e.stopPropagation();
+														setSyncingObjective(obj.uuid);
+														const ok = await syncObjective(project.uuid, obj.uuid);
+														setSyncingObjective(null);
+														if (ok) {
+															toast.success(`"${obj.name}" synced to Linear.`);
+															fetchObjectives(phase.uuid);
+														} else {
+															toast.error('Failed to sync to Linear.');
+														}
+													}}
+													aria-label="Sync to Linear"
+													title="Sync to Linear"
+												>
+													{syncingObjective === obj.uuid ? (
+														<Loader2 size={13} className={styles.spin} />
+													) : (
+														<LinearIcon size={13} />
+													)}
+												</button>
+											)
 										)}
 										<button
 											className={styles.deleteButton}
@@ -505,74 +573,112 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 												<div className={styles.taskList}>
 													{(obj.tasks || []).map((task) => {
 														const isEditing = editingTask?.uuid === task.uuid;
+														const subs = task.subtasks || [];
 														return (
-															<div
-																key={task.uuid}
-																className={`${styles.taskRow} ${task.completed ? styles.taskDone : ''}`}
-																onClick={() => {
-																	if (!isEditing) toggleTask(task.uuid, obj.uuid, phase.uuid, !task.completed);
-																}}
-																style={{ cursor: isEditing ? 'default' : 'pointer' }}
-															>
-																<span className={styles.checkIcon}>
-																	{task.completed ? (
-																		<CheckSquare size={18} className={styles.checkDone} />
-																	) : (
-																		<Square size={18} className={styles.checkTodo} />
-																	)}
-																</span>
-																{isEditing ? (
-																	<input
-																		ref={editInputRef}
-																		className={styles.editTaskInput}
-																		value={editingTask.name}
-																		onChange={(e) => setEditingTask({ ...editingTask, name: e.target.value })}
-																		onClick={(e) => e.stopPropagation()}
-																		onKeyDown={(e) => {
-																			if (e.key === 'Enter') {
+															<React.Fragment key={task.uuid}>
+																<div
+																	className={`${styles.taskRow} ${task.completed ? styles.taskDone : ''}`}
+																	onClick={(e) => {
+																		if (!isEditing && !(e.target as HTMLElement).closest('button'))
+																			toggleTask(task.uuid, obj.uuid, phase.uuid, !task.completed);
+																	}}
+																	style={{ cursor: isEditing ? 'default' : 'pointer' }}
+																>
+																	<span className={styles.checkIcon}>
+																		{task.completed ? (
+																			<CheckSquare size={18} className={styles.checkDone} />
+																		) : (
+																			<Square size={18} className={styles.checkTodo} />
+																		)}
+																	</span>
+																	{isEditing ? (
+																		<input
+																			ref={editInputRef}
+																			className={styles.editTaskInput}
+																			value={editingTask.name}
+																			onChange={(e) => setEditingTask({ ...editingTask, name: e.target.value })}
+																			onClick={(e) => e.stopPropagation()}
+																			onKeyDown={(e) => {
+																				if (e.key === 'Enter') {
+																					const name = editingTask.name.trim();
+																					if (name && name !== task.name) {
+																						updateTask(task.uuid, obj.uuid, phase.uuid, { name });
+																					}
+																					setEditingTask(null);
+																				}
+																				if (e.key === 'Escape') setEditingTask(null);
+																			}}
+																			onBlur={() => {
 																				const name = editingTask.name.trim();
 																				if (name && name !== task.name) {
 																					updateTask(task.uuid, obj.uuid, phase.uuid, { name });
 																				}
 																				setEditingTask(null);
-																			}
-																			if (e.key === 'Escape') setEditingTask(null);
+																			}}
+																			autoFocus
+																		/>
+																	) : (
+																		<span className={styles.taskName}>
+																			{task.name}
+																			{subs.length > 0 && (
+																				<span className={styles.subtaskCount}>
+																					{subs.filter((s) => s.completed).length}/{subs.length}
+																				</span>
+																			)}
+																		</span>
+																	)}
+																	<button
+																		className={styles.editButton}
+																		onClick={(e) => {
+																			e.stopPropagation();
+																			setEditingTask({ uuid: task.uuid, objUuid: obj.uuid, name: task.name });
 																		}}
-																		onBlur={() => {
-																			const name = editingTask.name.trim();
-																			if (name && name !== task.name) {
-																				updateTask(task.uuid, obj.uuid, phase.uuid, { name });
-																			}
-																			setEditingTask(null);
+																		aria-label="edit task"
+																	>
+																		<Pencil size={12} />
+																	</button>
+																	<button
+																		className={styles.deleteButton}
+																		onClick={(e) => {
+																			e.stopPropagation();
+																			deleteTask(task.uuid, obj.uuid, phase.uuid);
 																		}}
-																		autoFocus
-																	/>
-																) : (
-																	<span className={styles.taskName}>
-																		{task.name}
-																	</span>
+																		aria-label="delete task"
+																	>
+																		<Trash2 size={12} />
+																	</button>
+																</div>
+																{subs.length > 0 && (
+																	<div className={styles.subtaskList}>
+																		{subs.map((sub) => (
+																			<div
+																				key={sub.uuid}
+																				className={`${styles.subtaskRow} ${sub.completed ? styles.taskDone : ''}`}
+																				onClick={() => toggleTask(sub.uuid, obj.uuid, phase.uuid, !sub.completed)}
+																			>
+																				<span className={styles.checkIcon}>
+																					{sub.completed ? (
+																						<CheckSquare size={14} className={styles.checkDone} />
+																					) : (
+																						<Square size={14} className={styles.checkTodo} />
+																					)}
+																				</span>
+																				<span className={styles.subtaskName}>{sub.name}</span>
+																				<button
+																					className={styles.deleteButton}
+																					onClick={(e) => {
+																						e.stopPropagation();
+																						deleteTask(sub.uuid, obj.uuid, phase.uuid);
+																					}}
+																					aria-label="delete subtask"
+																				>
+																					<Trash2 size={10} />
+																				</button>
+																			</div>
+																		))}
+																	</div>
 																)}
-																<button
-																	className={styles.editButton}
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		setEditingTask({ uuid: task.uuid, objUuid: obj.uuid, name: task.name });
-																	}}
-																	aria-label="edit task"
-																>
-																	<Pencil size={12} />
-																</button>
-																<button
-																	className={styles.deleteButton}
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		deleteTask(task.uuid, obj.uuid, phase.uuid);
-																	}}
-																	aria-label="delete task"
-																>
-																	<Trash2 size={12} />
-																</button>
-															</div>
+															</React.Fragment>
 														);
 													})}
 
@@ -655,6 +761,44 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 							{doneTasks} of {totalTasks} tasks done
 						</p>
 					)}
+
+					{isPlanningPhase && planningCriteria.every((c) => c.done) && (() => {
+						const projectPhases = (allPhases[project.uuid] || []).slice().sort((a, b) => a.orderIndex - b.orderIndex);
+						const executionPhase = projectPhases.find((p) => p.name.toLowerCase().includes('execution'));
+						if (!executionPhase) return null;
+						const executionJob = getJobForPhase(executionPhase.uuid);
+						const executionRunning = executionJob?.status === 'running';
+						const executionObjectives = objectives[executionPhase.uuid] || [];
+						const alreadyGenerated = executionObjectives.length > 0;
+						return (
+							<button
+								className={styles.generatePlanButton}
+								onClick={() => {
+									if (executionRunning || alreadyGenerated) return;
+									// Pre-select planning phase docs
+									const planningDocs = projectDocs.filter((d) => d.phaseId === phase.id && !d.name.startsWith('Questions: '));
+									setSelectedDocUuids(new Set(planningDocs.map((d) => d.uuid)));
+									setContextModal({ targetPhaseUuid: executionPhase.uuid });
+								}}
+								disabled={executionRunning || alreadyGenerated}
+								title={alreadyGenerated ? 'Execution objectives already generated' : undefined}
+							>
+								{executionRunning ? (
+									<>
+										<Loader2 size={16} className={styles.spin} /> GENERATING PLAN…
+									</>
+								) : alreadyGenerated ? (
+									<>
+										<CheckSquare size={16} /> PLAN GENERATED
+									</>
+								) : (
+									<>
+										<Sparkles size={16} /> GENERATE PLAN
+									</>
+								)}
+							</button>
+						);
+					})()}
 				</div>
 			</div>
 
@@ -765,6 +909,97 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						</div>
 					</div>
 				)}
+			</Modal>
+
+			<Modal
+				open={contextModal !== null}
+				title="Select context for plan generation"
+				onClose={() => setContextModal(null)}
+				size="compact"
+			>
+				{contextModal && (() => {
+					const projectPhases = (allPhases[project.uuid] || []).slice().sort((a, b) => a.orderIndex - b.orderIndex);
+					const allNonQuestionDocs = projectDocs.filter((d) => !d.name.startsWith('Questions: ') && d.phaseId !== null);
+					const toggleDoc = (uuid: string) => {
+						setSelectedDocUuids((prev) => {
+							const next = new Set(prev);
+							next.has(uuid) ? next.delete(uuid) : next.add(uuid);
+							return next;
+						});
+					};
+					const togglePhase = (phaseId: number, docs: typeof allNonQuestionDocs) => {
+						const phaseDocs = docs.filter((d) => d.phaseId === phaseId);
+						const allSelected = phaseDocs.every((d) => selectedDocUuids.has(d.uuid));
+						setSelectedDocUuids((prev) => {
+							const next = new Set(prev);
+							phaseDocs.forEach((d) => allSelected ? next.delete(d.uuid) : next.add(d.uuid));
+							return next;
+						});
+					};
+					const totalChars = allNonQuestionDocs
+						.filter((d) => selectedDocUuids.has(d.uuid))
+						.reduce((n, d) => n + (d.content?.length || 0), 0);
+
+					return (
+						<div className={styles.contextModal}>
+							<p className={styles.contextHint}>
+								Select which documents to feed as context. Planning docs are pre-selected.
+							</p>
+							<div className={styles.contextList}>
+								{projectPhases.map((p) => {
+									const pDocs = allNonQuestionDocs.filter((d) => d.phaseId === p.id);
+									if (pDocs.length === 0) return null;
+									const allChecked = pDocs.every((d) => selectedDocUuids.has(d.uuid));
+									const someChecked = pDocs.some((d) => selectedDocUuids.has(d.uuid));
+									return (
+										<div key={p.uuid} className={styles.contextPhase}>
+											<label className={styles.contextPhaseLabel}>
+												<input
+													type="checkbox"
+													checked={allChecked}
+													ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }}
+													onChange={() => togglePhase(p.id, allNonQuestionDocs)}
+												/>
+												{p.name}
+												<span className={styles.contextCount}>{pDocs.filter((d) => selectedDocUuids.has(d.uuid)).length}/{pDocs.length}</span>
+											</label>
+											<div className={styles.contextDocs}>
+												{pDocs.map((d) => (
+													<label key={d.uuid} className={styles.contextDocLabel}>
+														<input
+															type="checkbox"
+															checked={selectedDocUuids.has(d.uuid)}
+															onChange={() => toggleDoc(d.uuid)}
+														/>
+														<span className={styles.contextDocName}>{d.name}</span>
+														<span className={styles.contextDocSize}>{Math.round((d.content?.length || 0) / 1000)}k</span>
+													</label>
+												))}
+											</div>
+										</div>
+									);
+								})}
+							</div>
+							<div className={styles.contextFooter}>
+								<span className={styles.contextTotal}>
+									{selectedDocUuids.size} docs · ~{Math.round(totalChars / 4000)}k tokens
+								</span>
+								<button
+									className={styles.analysisConfirmBtn}
+									disabled={selectedDocUuids.size === 0}
+									onClick={() => {
+										setShaking(true);
+										setTimeout(() => setShaking(false), 600);
+										startPhaseObjectives(contextModal.targetPhaseUuid, [...selectedDocUuids]);
+										setContextModal(null);
+									}}
+								>
+									<Sparkles size={14} /> Generate
+								</button>
+							</div>
+						</div>
+					);
+				})()}
 			</Modal>
 		</div>
 	);

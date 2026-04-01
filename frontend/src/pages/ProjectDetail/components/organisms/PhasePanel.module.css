@@ -5,6 +5,33 @@
 	overflow: hidden;
 }
 
+@keyframes violentShake {
+	0%, 100% { transform: translate(0, 0) rotate(0deg); }
+	5% { transform: translate(-8px, 4px) rotate(-1.5deg); }
+	10% { transform: translate(7px, -5px) rotate(2deg); }
+	15% { transform: translate(-6px, 3px) rotate(-2.5deg); }
+	20% { transform: translate(9px, -2px) rotate(1.5deg); }
+	25% { transform: translate(-5px, 6px) rotate(-1deg); }
+	30% { transform: translate(8px, -4px) rotate(2.5deg); }
+	35% { transform: translate(-7px, 2px) rotate(-2deg); }
+	40% { transform: translate(6px, -6px) rotate(1deg); }
+	45% { transform: translate(-4px, 5px) rotate(-1.5deg); }
+	50% { transform: translate(7px, -3px) rotate(2deg); }
+	55% { transform: translate(-6px, 4px) rotate(-2.5deg); }
+	60% { transform: translate(5px, -5px) rotate(1.5deg); }
+	65% { transform: translate(-8px, 2px) rotate(-1deg); }
+	70% { transform: translate(6px, -4px) rotate(2deg); }
+	75% { transform: translate(-4px, 3px) rotate(-1.5deg); }
+	80% { transform: translate(5px, -2px) rotate(1deg); }
+	85% { transform: translate(-3px, 2px) rotate(-0.5deg); }
+	90% { transform: translate(2px, -1px) rotate(0.5deg); }
+	95% { transform: translate(-1px, 1px) rotate(0deg); }
+}
+
+.shake {
+	animation: violentShake 0.6s ease-out;
+}
+
 .panelHeader {
 	display: flex;
 	align-items: center;
@@ -506,6 +533,11 @@
 	margin-left: auto;
 }
 
+.objectiveMeta > span {
+	width: 3.2em;
+	justify-content: center;
+}
+
 .syncButton {
 	background: none;
 	border: none;
@@ -530,6 +562,13 @@
 	opacity: 1;
 	cursor: default;
 	color: var(--color-primary);
+}
+
+.syncedIcon {
+	display: flex;
+	align-items: center;
+	padding: 2px;
+	color: var(--color-success);
 }
 
 .deleteButton {
@@ -585,6 +624,47 @@
 	flex: 1;
 	font-size: var(--font-size-sm);
 	color: var(--color-text-secondary);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+}
+
+.subtaskCount {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	font-family: var(--font-family-mono);
+}
+
+.subtaskList {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding-left: calc(var(--spacing-sm) + 22px);
+	margin-bottom: var(--spacing-xs);
+}
+
+.subtaskRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
+	padding: 2px var(--spacing-xs);
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+}
+
+.subtaskRow:hover {
+	background-color: var(--color-background-secondary);
+}
+
+.subtaskName {
+	flex: 1;
+	font-size: var(--font-size-xs);
+	color: var(--color-text-tertiary);
+}
+
+.taskDone .subtaskName {
+	text-decoration: line-through;
+	color: var(--color-text-muted);
 }
 
 .checkButton {
@@ -697,6 +777,36 @@
 	margin: 0;
 }
 
+.generatePlanButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing-sm);
+	width: 100%;
+	padding: var(--spacing-md) var(--spacing-lg);
+	margin-top: var(--spacing-lg);
+	border: 1px solid var(--color-primary);
+	border-radius: var(--radius-md);
+	background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+	color: var(--color-primary);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-wider);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.generatePlanButton:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+	box-shadow: var(--glow-primary);
+}
+
+.generatePlanButton:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
 /* Mode toggle icons (used in Callout / Modal headers) */
 
 .iconBtn {
@@ -748,4 +858,98 @@
 
 .modeIconBtnActive:hover {
 	color: var(--color-text-inverse);
+}
+
+/* Context selector modal */
+
+.contextModal {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-md);
+}
+
+.contextHint {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-secondary);
+	margin: 0;
+}
+
+.contextList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-md);
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.contextPhase {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xs);
+}
+
+.contextPhaseLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-text);
+	cursor: pointer;
+}
+
+.contextCount {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	font-family: var(--font-family-mono);
+	margin-left: auto;
+}
+
+.contextDocs {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding-left: calc(var(--spacing-sm) + 18px);
+}
+
+.contextDocLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+	font-size: var(--font-size-xs);
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	padding: 2px 0;
+}
+
+.contextDocLabel:hover {
+	color: var(--color-text);
+}
+
+.contextDocName {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextDocSize {
+	font-family: var(--font-family-mono);
+	color: var(--color-text-muted);
+	flex-shrink: 0;
+}
+
+.contextFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-top: var(--spacing-sm);
+	border-top: 1px solid var(--color-border);
+}
+
+.contextTotal {
+	font-size: var(--font-size-xs);
+	font-family: var(--font-family-mono);
+	color: var(--color-text-muted);
 }

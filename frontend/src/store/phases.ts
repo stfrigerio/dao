@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Phase } from '../../../shared/types';
-import { getAuthToken } from './authToken';
+import { getAuthToken, authFetch } from './authToken';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -34,7 +34,7 @@ export const usePhaseStore = create<PhaseState>()(
 			fetchPhases: async (projectUuid) => {
 				set({ loading: true, error: null });
 				try {
-					const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}/phases`, {
+					const response = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/phases`, {
 						headers: getHeaders(),
 					});
 					if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -53,7 +53,7 @@ export const usePhaseStore = create<PhaseState>()(
 
 			createPhase: async (projectUuid, data) => {
 				try {
-					const response = await fetch(`${API_BASE_URL}/projects/${projectUuid}/phases`, {
+					const response = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/phases`, {
 						method: 'POST',
 						headers: getHeaders(),
 						body: JSON.stringify(data),
@@ -77,7 +77,7 @@ export const usePhaseStore = create<PhaseState>()(
 
 			updatePhase: async (phaseUuid, data) => {
 				try {
-					const response = await fetch(`${API_BASE_URL}/phases/${phaseUuid}`, {
+					const response = await authFetch(`${API_BASE_URL}/phases/${phaseUuid}`, {
 						method: 'PUT',
 						headers: getHeaders(),
 						body: JSON.stringify(data),
@@ -101,7 +101,7 @@ export const usePhaseStore = create<PhaseState>()(
 			},
 
 			deletePhase: async (phaseUuid, projectUuid) => {
-				const response = await fetch(`${API_BASE_URL}/phases/${phaseUuid}`, {
+				const response = await authFetch(`${API_BASE_URL}/phases/${phaseUuid}`, {
 					method: 'DELETE',
 					headers: getHeaders(),
 				});

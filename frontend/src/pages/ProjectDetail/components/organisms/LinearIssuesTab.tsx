@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw, Unlink } from 'lucide-react';
 import type { Project } from '../../../../../../shared/types';
 import { useLinearStore } from '@/store/linear';
+import { useObjectiveStore } from '@/store/objectives';
+import { usePhaseStore } from '@/store/phases';
+import { useToastStore } from '@/store/toast';
 import { LinkLinearModal } from '../molecules/LinkLinearModal';
 import styles from './LinearIssuesTab.module.css';
 
@@ -10,8 +13,12 @@ interface LinearIssuesTabProps {
 }
 
 export function LinearIssuesTab({ project }: LinearIssuesTabProps) {
-	const { issues, loading, fetchIssues } = useLinearStore();
+	const { issues, loading, fetchIssues, reconcile } = useLinearStore();
+	const { phases } = usePhaseStore();
+	const { fetchObjectives } = useObjectiveStore();
+	const toast = useToastStore();
 	const [showLinkModal, setShowLinkModal] = useState(false);
+	const [reconciling, setReconciling] = useState(false);
 	const projectIssues = issues[project.uuid] || [];
 
 	useEffect(() => {
@@ -38,14 +45,34 @@ export function LinearIssuesTab({ project }: LinearIssuesTabProps) {
 		<div className={styles.wrapper}>
 			<div className={styles.header}>
 				<h3 className={styles.title}>Linear Issues</h3>
-				<button
-					className={styles.refreshButton}
-					onClick={() => fetchIssues(project.uuid)}
-					disabled={loading}
-				>
-					<RefreshCw size={14} />
-					Refresh
-				</button>
+				<div style={{ display: 'flex', gap: '8px' }}>
+					<button
+						className={styles.refreshButton}
+						onClick={async () => {
+							setReconciling(true);
+							const cleared = await reconcile(project.uuid);
+							setReconciling(false);
+							if (cleared > 0) {
+								toast.success(`Cleared ${cleared} stale sync mappings.`);
+								(phases[project.uuid] || []).forEach((p) => fetchObjectives(p.uuid));
+							}
+							fetchIssues(project.uuid);
+						}}
+						disabled={reconciling}
+						title="Refresh issues and clear stale sync mappings"
+					>
+						{reconciling ? <RefreshCw size={14} className={styles.spin} /> : <Unlink size={14} />}
+						Reconcile
+					</button>
+					<button
+						className={styles.refreshButton}
+						onClick={() => fetchIssues(project.uuid)}
+						disabled={loading}
+					>
+						<RefreshCw size={14} />
+						Refresh
+					</button>
+				</div>
 			</div>
 
 			{loading ? (
@@ -58,9 +85,11 @@ export function LinearIssuesTab({ project }: LinearIssuesTabProps) {
 						<div key={issue.id} className={styles.issue}>
 							<div className={styles.issueHeader}>
 								<span className={styles.identifier}>{issue.identifier}</span>
+								{issue.state && (
 								<span className={styles.state} style={{ color: issue.state.color }}>
 									{issue.state.name}
 								</span>
+							)}
 							</div>
 							<p className={styles.issueTitle}>{issue.title}</p>
 							{issue.assignee && (
