@@ -50,6 +50,17 @@ code {
 button {
 	font-family: var(--font-family-primary);
 	cursor: pointer;
+	transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+button:hover:not(:disabled) {
+	color: var(--color-primary);
+	border-color: var(--color-primary);
+}
+
+button:disabled {
+	cursor: default;
+	opacity: 0.5;
 }
 
 input,

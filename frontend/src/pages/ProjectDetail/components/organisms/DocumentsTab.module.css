@@ -29,11 +29,6 @@
 	transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.uploadBtn:hover:not(:disabled) {
-	border-color: var(--color-primary);
-	color: var(--color-primary);
-}
-
 .uploadBtn:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;

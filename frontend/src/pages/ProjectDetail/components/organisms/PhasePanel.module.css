@@ -77,11 +77,6 @@
 	text-transform: uppercase;
 }
 
-.pinButton:hover {
-	color: var(--color-text);
-	border-color: var(--color-text-muted);
-}
-
 .pinButtonActive {
 	color: var(--color-primary);
 	border-color: var(--color-primary);
@@ -260,11 +255,6 @@
 	font-size: var(--font-size-xs);
 	cursor: pointer;
 	transition: all var(--transition-fast);
-}
-
-.addButton:hover {
-	border-color: var(--color-primary);
-	color: var(--color-primary);
 }
 
 .empty {
@@ -554,10 +544,6 @@
 	opacity: 1;
 }
 
-.syncButton:hover {
-	color: var(--color-primary);
-}
-
 .syncButton:disabled {
 	opacity: 1;
 	cursor: default;
@@ -699,10 +685,6 @@
 	opacity: 1;
 }
 
-.editButton:hover {
-	color: var(--color-primary);
-}
-
 .editTaskInput {
 	flex: 1;
 	padding: var(--spacing-xs) var(--spacing-sm);
@@ -733,10 +715,6 @@
 	padding: 4px var(--spacing-xs);
 	margin-top: 2px;
 	transition: color var(--transition-fast);
-}
-
-.addTaskButton:hover {
-	color: var(--color-primary);
 }
 
 /* Inline add rows */
@@ -802,11 +780,6 @@
 	box-shadow: var(--glow-primary);
 }
 
-.generatePlanButton:disabled {
-	opacity: 0.5;
-	cursor: default;
-}
-
 /* Mode toggle icons (used in Callout / Modal headers) */
 
 .iconBtn {
@@ -819,10 +792,6 @@
 	color: var(--color-text-muted);
 	cursor: pointer;
 	transition: color var(--transition-fast);
-}
-
-.iconBtn:hover {
-	color: var(--color-text);
 }
 
 .modeIconBtn {
@@ -844,10 +813,6 @@
 .modeIconBtn:last-child {
 	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 	border-left: none;
-}
-
-.modeIconBtn:hover {
-	color: var(--color-text);
 }
 
 .modeIconBtnActive {

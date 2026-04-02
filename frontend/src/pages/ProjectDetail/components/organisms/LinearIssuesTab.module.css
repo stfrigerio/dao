@@ -31,11 +31,6 @@
 	transition: all var(--transition-fast);
 }
 
-.refreshButton:hover:not(:disabled) {
-	border-color: var(--color-primary);
-	color: var(--color-primary);
-}
-
 .refreshButton:disabled {
 	opacity: 0.6;
 }

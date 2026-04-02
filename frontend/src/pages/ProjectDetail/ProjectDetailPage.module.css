@@ -97,10 +97,6 @@
 	margin-bottom: -1px;
 }
 
-.tab:hover {
-	color: var(--color-text);
-}
-
 .tabActive {
 	color: var(--color-primary);
 	border-bottom-color: var(--color-primary);
