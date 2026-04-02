@@ -1,6 +1,6 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Settings, LogOut } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, FolderKanban, Settings, LogOut, Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Breadcrumb } from '@/components/atoms/Breadcrumb/Breadcrumb';
 import { GlitchText } from '@/components/atoms/GlitchText/GlitchText';
@@ -15,7 +15,16 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
 	const { user, logout } = useAuthStore();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const crumbs = useBreadcrumbCrumbs();
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+
+	const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+	// Close sidebar on navigation
+	React.useEffect(() => {
+		setSidebarOpen(false);
+	}, [location.pathname]);
 
 	const handleLogout = async () => {
 		await logout();
@@ -24,7 +33,9 @@ export function AppShell({ children }: AppShellProps) {
 
 	return (
 		<div className={styles.shell}>
-			<nav className={styles.sidebar}>
+			{sidebarOpen && <div className={styles.overlay} onClick={closeSidebar} />}
+
+			<nav className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
 				<div className={styles.logo}>
 					<GlitchText className={styles.logoText}>道</GlitchText>
 				</div>
@@ -76,6 +87,13 @@ export function AppShell({ children }: AppShellProps) {
 
 			<div className={styles.content}>
 				<header className={styles.topBar}>
+					<button
+						className={styles.hamburger}
+						onClick={() => setSidebarOpen((o) => !o)}
+						aria-label="Toggle menu"
+					>
+						{sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+					</button>
 					<Breadcrumb items={crumbs} />
 				</header>
 				<main className={styles.main}>{children}</main>

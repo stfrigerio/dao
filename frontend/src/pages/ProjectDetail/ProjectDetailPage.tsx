@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Link2, Users, Trash2, FileText } from 'lucide-react';
 import { useProjectStore } from '@/store/projects';
 import { usePhaseStore } from '@/store/phases';
+import { useLinearStore } from '@/store/linear';
 import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import { PhaseBoard } from './components/organisms/PhaseBoard';
 import { LinearIssuesTab } from './components/organisms/LinearIssuesTab';
@@ -18,6 +19,7 @@ export function ProjectDetailPage() {
 	const [activeTab, setActiveTab] = useState<Tab>('phases');
 	const { items: projects, fetchByUuid, deleteByUuid } = useProjectStore();
 	const { phases, fetchPhases } = usePhaseStore();
+	const { pullStatus } = useLinearStore();
 
 	const project = projects.find((p) => p.uuid === uuid);
 	const projectPhases = uuid ? phases[uuid] || [] : [];
@@ -34,6 +36,13 @@ export function ProjectDetailPage() {
 			fetchPhases(uuid);
 		}
 	}, [uuid, fetchByUuid, fetchPhases]);
+
+	// Pull task statuses from Linear on load
+	useEffect(() => {
+		if (project?.linearApiKey && uuid) {
+			pullStatus(uuid);
+		}
+	}, [project?.linearApiKey, uuid, pullStatus]);
 
 	const handleDelete = async () => {
 		if (!confirm(`Delete project "${project?.name}"?`)) return;

@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { objectives, tasks, phases, projects } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
-import { updateIssueState } from '../services/linear';
+import { updateIssueState, deleteIssue } from '../services/linear';
 
 const router = Router();
 
@@ -98,11 +98,32 @@ router.patch('/objectives/:uuid/complete', requireAuth, async (req: AuthRequest,
 // DELETE /objectives/:uuid
 router.delete('/objectives/:uuid', requireAuth, async (req: AuthRequest, res) => {
 	const uuid = req.params['uuid'] as string;
-	const [obj] = await db.delete(objectives).where(eq(objectives.uuid, uuid)).returning();
+
+	// Collect Linear issue IDs before cascade deletes the tasks
+	const [obj] = await db.select().from(objectives).where(eq(objectives.uuid, uuid));
 	if (!obj) {
 		res.status(404).json({ error: 'Objective not found' });
 		return;
 	}
+
+	const objTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, obj.id));
+	const linearIssueIds = objTasks.map((t) => t.linearIssueId).filter(Boolean) as string[];
+
+	await db.delete(objectives).where(eq(objectives.uuid, uuid));
+
+	// Delete linked Linear issues in background
+	if (linearIssueIds.length > 0) {
+		const [phase] = await db.select().from(phases).where(eq(phases.id, obj.phaseId));
+		if (phase) {
+			const [project] = await db.select().from(projects).where(eq(projects.id, phase.projectId));
+			if (project?.linearApiKey) {
+				for (const issueId of linearIssueIds) {
+					deleteIssue(project.linearApiKey, issueId).catch(() => {});
+				}
+			}
+		}
+	}
+
 	res.json({ ok: true });
 });
 
@@ -191,6 +212,21 @@ router.delete('/tasks/:uuid', requireAuth, async (req: AuthRequest, res) => {
 		res.status(404).json({ error: 'Task not found' });
 		return;
 	}
+
+	// Delete linked Linear issue in background
+	if (task.linearIssueId) {
+		const [obj] = await db.select().from(objectives).where(eq(objectives.id, task.objectiveId));
+		if (obj) {
+			const [phase] = await db.select().from(phases).where(eq(phases.id, obj.phaseId));
+			if (phase) {
+				const [project] = await db.select().from(projects).where(eq(projects.id, phase.projectId));
+				if (project?.linearApiKey) {
+					deleteIssue(project.linearApiKey, task.linearIssueId).catch(() => {});
+				}
+			}
+		}
+	}
+
 	res.json({ ok: true });
 });
 

@@ -89,3 +89,20 @@
 	flex-shrink: 0;
 	margin-top: 24px;
 }
+
+@media (max-width: 768px) {
+	.board {
+		flex-direction: column;
+	}
+
+	.arrow {
+		transform: rotate(90deg);
+		margin-top: 0;
+		align-self: center;
+	}
+
+	.phaseCard {
+		flex: none;
+		width: 100%;
+	}
+}

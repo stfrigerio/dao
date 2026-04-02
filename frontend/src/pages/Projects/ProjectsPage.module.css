@@ -215,3 +215,27 @@
 .emptyButton:hover {
 	background-color: var(--color-primary-hover);
 }
+
+@media (max-width: 768px) {
+	.header {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.title {
+		font-size: var(--font-size-2xl);
+	}
+
+	.toolbar {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.searchWrapper {
+		min-width: 0;
+	}
+
+	.grid {
+		grid-template-columns: 1fr;
+	}
+}

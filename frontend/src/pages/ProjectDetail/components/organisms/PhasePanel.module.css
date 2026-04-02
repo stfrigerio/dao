@@ -940,6 +940,40 @@
 	flex-shrink: 0;
 }
 
+@media (max-width: 768px) {
+	.panelHeader {
+		flex-wrap: wrap;
+		gap: var(--spacing-sm);
+		padding: var(--spacing-md);
+	}
+
+	.panelActions {
+		flex-wrap: wrap;
+	}
+
+	.criteriaBar {
+		flex-wrap: wrap;
+		gap: var(--spacing-xs);
+		padding: var(--spacing-sm) var(--spacing-md);
+	}
+
+	.criteriaLine {
+		min-width: var(--spacing-sm);
+	}
+
+	.panelBody {
+		padding: var(--spacing-md);
+	}
+
+	.objectiveRow {
+		flex-wrap: wrap;
+	}
+
+	.objectiveMeta {
+		margin-left: calc(var(--spacing-sm) + 16px);
+	}
+}
+
 .contextFooter {
 	display: flex;
 	align-items: center;

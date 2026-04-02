@@ -153,6 +153,40 @@ export async function updateIssueState(apiKey: string, issueId: string, complete
 	await client.updateIssue(issueId, { stateId: targetState.id });
 }
 
+export async function deleteIssue(apiKey: string, issueId: string): Promise<boolean> {
+	try {
+		const client = getClient(apiKey);
+		await client.deleteIssue(issueId);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export async function getIssueStates(apiKey: string, issueIds: string[]): Promise<Record<string, { completed: boolean; stateName: string }>> {
+	const client = getClient(apiKey);
+	const result: Record<string, { completed: boolean; stateName: string }> = {};
+
+	// Fetch in batches of 50
+	for (let i = 0; i < issueIds.length; i += 50) {
+		const batch = issueIds.slice(i, i + 50);
+		const issues = await client.issues({
+			filter: { id: { in: batch } },
+			first: 50,
+		});
+		for (const issue of issues.nodes) {
+			const state = await issue.state;
+			if (state) {
+				result[issue.id] = {
+					completed: state.type === 'completed',
+					stateName: state.name,
+				};
+			}
+		}
+	}
+	return result;
+}
+
 export async function validateApiKey(apiKey: string): Promise<boolean> {
 	try {
 		const client = getClient(apiKey);

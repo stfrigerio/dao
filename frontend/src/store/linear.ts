@@ -31,6 +31,7 @@ interface LinearState {
 	syncObjective: (projectUuid: string, objectiveUuid: string) => Promise<boolean>;
 	syncExecutionToLinear: (projectUuid: string) => Promise<boolean>;
 	reconcile: (projectUuid: string) => Promise<number>;
+	pullStatus: (projectUuid: string) => Promise<void>;
 	clearError: () => void;
 }
 
@@ -107,6 +108,17 @@ export const useLinearStore = create<LinearState>()(
 					return cleared as number;
 				} catch {
 					return 0;
+				}
+			},
+
+			pullStatus: async (projectUuid) => {
+				try {
+					await authFetch(
+						`${API_BASE_URL}/projects/${projectUuid}/linear/pull-status`,
+						{ method: 'POST', headers: getHeaders() }
+					);
+				} catch {
+					// silent — best-effort sync
 				}
 			},
 

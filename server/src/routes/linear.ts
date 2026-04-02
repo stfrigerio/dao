@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { projects, objectives, tasks, phases } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
-import { getIssues, createIssue, createProject, createIssueInProject, updateIssueState, getProjectColor, getLinearProjects } from '../services/linear';
+import { getIssues, createIssue, createProject, createIssueInProject, updateIssueState, getProjectColor, getLinearProjects, getIssueStates } from '../services/linear';
 import { isNotNull } from 'drizzle-orm';
 
 const router = Router();
@@ -166,6 +166,58 @@ router.post('/projects/:uuid/sync-execution-to-linear', requireAuth, async (req:
 	});
 });
 
+// POST /projects/:uuid/linear/pull-status — pull issue states from Linear and update dao tasks
+router.post('/projects/:uuid/linear/pull-status', requireAuth, async (req: AuthRequest, res) => {
+	const uuid = req.params['uuid'] as string;
+	const [project] = await db.select().from(projects).where(eq(projects.uuid, uuid));
+	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+	if (!project.linearApiKey) { res.status(400).json({ error: 'Project not linked to Linear' }); return; }
+
+	try {
+		const projectPhases = await db.select().from(phases).where(eq(phases.projectId, project.id));
+		const phaseIds = projectPhases.map((p) => p.id);
+
+		// Get all objectives for this project that have synced tasks
+		const allObjs = await db.select().from(objectives).where(isNotNull(objectives.linearProjectId));
+		const projectObjs = allObjs.filter((o) => phaseIds.includes(o.phaseId));
+
+		// Get all synced tasks
+		const syncedTasks = [];
+		for (const obj of projectObjs) {
+			const objTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, obj.id));
+			syncedTasks.push(...objTasks.filter((t) => t.linearIssueId));
+		}
+
+		if (syncedTasks.length === 0) { res.json({ updated: 0 }); return; }
+
+		const issueIds = syncedTasks.map((t) => t.linearIssueId!);
+		const states = await getIssueStates(project.linearApiKey, issueIds);
+
+		let updated = 0;
+		for (const task of syncedTasks) {
+			const state = states[task.linearIssueId!];
+			if (!state) continue;
+			if (task.completed !== state.completed) {
+				await db.update(tasks).set({ completed: state.completed, updatedAt: new Date() }).where(eq(tasks.id, task.id));
+				updated++;
+			}
+		}
+
+		// Update objective completion based on child tasks
+		for (const obj of projectObjs) {
+			const objTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, obj.id));
+			const allDone = objTasks.length > 0 && objTasks.every((t) => t.completed);
+			if (obj.completed !== allDone) {
+				await db.update(objectives).set({ completed: allDone, updatedAt: new Date() }).where(eq(objectives.id, obj.id));
+			}
+		}
+
+		res.json({ updated, total: syncedTasks.length });
+	} catch (err: any) {
+		res.status(500).json({ error: err.message || 'Failed to pull status' });
+	}
+});
+
 // POST /linear/webhook — handle Linear webhooks (bidirectional sync)
 router.post('/linear/webhook', async (req, res) => {
 	const { type, action, data, updatedFrom } = req.body;
@@ -203,15 +255,11 @@ router.post('/linear/webhook', async (req, res) => {
 				await db.update(tasks).set({ name: data.title, updatedAt: new Date() }).where(eq(tasks.id, task.id));
 			}
 
-			// Issue removed → clear linearIssueId
-			if (action === 'remove') {
-				await db.update(tasks).set({ linearIssueId: null, updatedAt: new Date() }).where(eq(tasks.id, task.id));
-			}
 		}
 
-		// Issue deleted
+		// Issue deleted in Linear → delete task in dao
 		if (type === 'Issue' && action === 'remove' && data?.id) {
-			await db.update(tasks).set({ linearIssueId: null, updatedAt: new Date() }).where(eq(tasks.linearIssueId, data.id));
+			await db.delete(tasks).where(eq(tasks.linearIssueId, data.id));
 		}
 
 		res.json({ ok: true });
