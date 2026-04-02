@@ -163,6 +163,17 @@ export async function deleteIssue(apiKey: string, issueId: string): Promise<bool
 	}
 }
 
+export async function getIssuesByIds(apiKey: string, issueIds: string[]): Promise<Array<{ id: string }>> {
+	const client = getClient(apiKey);
+	const result: Array<{ id: string }> = [];
+	for (let i = 0; i < issueIds.length; i += 50) {
+		const batch = issueIds.slice(i, i + 50);
+		const issues = await client.issues({ filter: { id: { in: batch } }, first: 50 });
+		result.push(...issues.nodes.map((n) => ({ id: n.id })));
+	}
+	return result;
+}
+
 export async function getIssueStates(apiKey: string, issueIds: string[]): Promise<Record<string, { completed: boolean; stateName: string }>> {
 	const client = getClient(apiKey);
 	const result: Record<string, { completed: boolean; stateName: string }> = {};

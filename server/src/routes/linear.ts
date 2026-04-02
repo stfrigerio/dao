@@ -303,22 +303,49 @@ router.post('/projects/:uuid/linear/reconcile', requireAuth, async (req: AuthReq
 
 	try {
 		const linearProjects = await getLinearProjects(project.linearApiKey);
-		const liveIds = new Set(linearProjects.map((p) => p.id));
+		const liveProjectIds = new Set(linearProjects.map((p) => p.id));
 
-		// Find objectives with linearProjectId that no longer exist in Linear
 		const projectPhases = await db.select().from(phases).where(eq(phases.projectId, project.id));
 		const phaseIds = projectPhases.map((p) => p.id);
-		const allObjs = await db.select().from(objectives).where(isNotNull(objectives.linearProjectId));
-		const staleObjs = allObjs.filter((o) => phaseIds.includes(o.phaseId) && !liveIds.has(o.linearProjectId!));
 
-		let cleared = 0;
+		// 1. Clear objectives whose Linear project no longer exists
+		const allObjs = await db.select().from(objectives).where(isNotNull(objectives.linearProjectId));
+		const staleObjs = allObjs.filter((o) => phaseIds.includes(o.phaseId) && !liveProjectIds.has(o.linearProjectId!));
+		let clearedObjs = 0;
 		for (const obj of staleObjs) {
 			await db.update(objectives).set({ linearProjectId: null, updatedAt: new Date() }).where(eq(objectives.id, obj.id));
 			await db.update(tasks).set({ linearIssueId: null, updatedAt: new Date() }).where(eq(tasks.objectiveId, obj.id));
-			cleared++;
+			clearedObjs++;
 		}
 
-		res.json({ cleared, objectives: staleObjs.map((o) => o.name) });
+		// 2. Fetch all live Linear issue IDs and delete DAO tasks whose linearIssueId is gone
+		const { getIssuesByIds } = await import('../services/linear');
+		const projectObjIds = allObjs.filter((o) => phaseIds.includes(o.phaseId)).map((o) => o.id);
+		const allTasks = await db.select().from(tasks).where(isNotNull(tasks.linearIssueId));
+		const syncedTasks = allTasks.filter((t) => projectObjIds.includes(t.objectiveId));
+
+		let deletedTasks = 0;
+		if (syncedTasks.length > 0) {
+			// Batch check which issue IDs still exist in Linear
+			const liveIssues = await getIssuesByIds(project.linearApiKey, syncedTasks.map((t) => t.linearIssueId!));
+			const liveIssueIds = new Set(liveIssues.map((i) => i.id));
+
+			const staleTasks = syncedTasks.filter((t) => !liveIssueIds.has(t.linearIssueId!));
+			for (const task of staleTasks) {
+				const objId = task.objectiveId;
+				await db.delete(tasks).where(eq(tasks.parentTaskId, task.id));
+				await db.delete(tasks).where(eq(tasks.id, task.id));
+				deletedTasks++;
+
+				// Delete objective if empty
+				const remaining = await db.select().from(tasks).where(eq(tasks.objectiveId, objId));
+				if (remaining.length === 0) {
+					await db.delete(objectives).where(eq(objectives.id, objId));
+				}
+			}
+		}
+
+		res.json({ clearedObjs, deletedTasks, staleObjectives: staleObjs.map((o) => o.name) });
 	} catch (err: any) {
 		res.status(500).json({ error: err.message || 'Failed to reconcile' });
 	}
