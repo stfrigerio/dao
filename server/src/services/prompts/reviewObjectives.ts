@@ -2,36 +2,62 @@ export function buildReviewObjectivesPrompt(
 	projectName: string,
 	projectType: string,
 	projectDescription: string | null,
-	scope: string | null
+	scope: string | null,
+	priorContext: string | null
 ): string {
-	return `Generate Review phase objectives and tasks for the project "${projectName}".
+	return `You are generating Review phase UAT (User Acceptance Testing) objectives for "${projectName}".
 
 Project: ${projectName}
 Type: ${projectType}
 ${projectDescription ? `Description: ${projectDescription}` : ''}
-${scope ? `\nProject Brief (high-level scope):\n${scope}` : ''}
+${scope ? `\nProject Brief:\n${scope}` : ''}
+${priorContext ? `\nPlanning specs and Execution tasks (what was built):\n${priorContext}` : ''}
 
-Output ONLY a raw JSON array. No preamble, no explanation, no markdown code fences. Start with [ and end with ].
+## Your job
 
-Review comes after Execution. The thing is built. This phase makes sure it actually works before calling it done. Every flow is tested, production is validated, and there are no known blockers.
+Read the Planning specs and Execution tasks above. Produce UAT objectives and scenarios that verify everything works.
 
-Two objectives are always present:
-1. Test Coverage — tasks that ensure every critical flow is tested end to end, edge cases are handled, and no untested paths remain
-2. Production Readiness — tasks that validate the production environment, deployment process, configuration, and monitoring
+## Structure
 
-Beyond those two, add objectives only where they are actually needed. Examples: Performance (if load or latency is a concern), Security (if the system handles sensitive data or exposes a public surface), Documentation (if the project requires user or operator docs before shipping). Do not include these by default — infer from the project.
+**Objective** = a functional area to test. Match the same groupings from Execution ("Auth System", "Project CRUD", "Agent Pipeline", etc.) so coverage maps 1:1 to what was built.
 
-Aim for 3–5 objectives. Each objective has 3–4 tasks. Tasks are specific and verifiable — each one has a clear pass/fail outcome.
+**Task** = a UAT scenario. Each scenario is a scripted walkthrough that a human follows step by step. The task name should describe the flow being tested.
 
-Format:
+## Task naming rules
+
+Each task name should describe a concrete user flow:
+- "Login with valid credentials and verify dashboard redirect"
+- "Create project, verify 5 phases auto-created with Discovery as current"
+- "Generate discovery objectives from project brief"
+- "Answer all questions, produce docs, verify documents appear in Documents tab"
+- "Toggle task completion and verify objective auto-completes when all tasks done"
+- "Sync execution objectives to Linear and verify projects/issues created"
+
+NOT:
+- "Test authentication" (too vague)
+- "Verify project management works" (not a scenario)
+
+## Rules
+
+1. Every specced feature must have at least one UAT scenario covering it.
+2. Include happy paths AND error paths (invalid login, empty states, missing required fields).
+3. Task names describe the full flow: what the user does AND what they should see.
+4. Generate as many objectives and tasks as needed for full coverage. Do not compress.
+5. Order scenarios within each objective from basic setup flows to complex interactions.
+
+## Output format
+
+Output ONLY a raw JSON array. No preamble, no explanation, no markdown fences.
+
 [
   {
-    "name": "Test Coverage",
-    "tasks": ["task 1", "task 2", "task 3"]
-  },
-  {
-    "name": "Production Readiness",
-    "tasks": ["task 1", "task 2", "task 3"]
+    "name": "Auth & Session UAT",
+    "tasks": [
+      "Login with valid admin credentials — verify redirect to /dashboard, user name in sidebar",
+      "Login with wrong password — verify 401 error message, no redirect",
+      "Session expiry — wait 15min, perform action, verify token refresh happens transparently",
+      "Logout — verify redirect to /login, protected routes inaccessible"
+    ]
   }
 ]`;
 }

@@ -73,7 +73,9 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 	const phaseName = phase.name.toLowerCase();
 	const isPlanningPhase = phaseName.includes('planning');
 	const isExecutionPhase = phaseName.includes('execution');
+	const isReviewPhase = phaseName.includes('review');
 	const isAgentPhase = isDiscoveryPhase || isPlanningPhase;
+	const hasGenerateButton = isAgentPhase || isExecutionPhase || isReviewPhase;
 	const [syncingExecution, setSyncingExecution] = useState(false);
 	const isCurrentPhase = project.currentPhaseUuid === phase.uuid;
 	const agentJob = getJobForPhase(phase.uuid);
@@ -240,7 +242,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 						<MapPin size={12} />
 						{isCurrentPhase ? 'CURRENT' : 'SET AS CURRENT'}
 					</button>
-					{isAgentPhase && (
+					{hasGenerateButton && (
 						<button
 							className={styles.agentButton}
 							onClick={() => startPhaseObjectives(phase.uuid)}

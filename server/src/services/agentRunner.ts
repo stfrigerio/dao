@@ -73,7 +73,7 @@ function selectObjectivesPrompt(
 	const type = detectPhaseType(phaseName);
 	if (type === 'planning') return buildPlanningObjectivesPrompt(projectName, projectType, projectDescription, scope);
 	if (type === 'execution') return buildExecutionObjectivesPrompt(projectName, projectType, projectDescription, scope, priorContext);
-	if (type === 'review') return buildReviewObjectivesPrompt(projectName, projectType, projectDescription, scope);
+	if (type === 'review') return buildReviewObjectivesPrompt(projectName, projectType, projectDescription, scope, priorContext);
 	return buildDiscoveryObjectivesPrompt(projectName, projectType, projectDescription, scope);
 }
 
@@ -157,6 +157,7 @@ export async function runPhaseObjectivesAgent(phaseUuid: string, documentUuids?:
 
 			jobs.set(jobId, { id: jobId, status: 'done' });
 		} catch (err) {
+			console.error(`[agent-job ${jobId}] failed:`, err);
 			jobs.set(jobId, { id: jobId, status: 'error', error: String(err) });
 		}
 	})();
@@ -213,6 +214,7 @@ export async function runObjectiveQuestionsAgent(objectiveUuid: string, userId: 
 
 			jobs.set(jobId, { id: jobId, status: 'done' });
 		} catch (err) {
+			console.error(`[agent-job ${jobId}] failed:`, err);
 			jobs.set(jobId, { id: jobId, status: 'error', error: String(err) });
 		}
 	})();
@@ -258,6 +260,7 @@ export async function runDocumentationAnalysisAgent(objectiveUuid: string): Prom
 
 			jobs.set(jobId, { id: jobId, status: 'done', result });
 		} catch (err) {
+			console.error(`[agent-job ${jobId}] failed:`, err);
 			jobs.set(jobId, { id: jobId, status: 'error', error: String(err) });
 		}
 	})();
@@ -345,6 +348,7 @@ export async function runDocumentationProductionAgent(
 
 			jobs.set(jobId, { id: jobId, status: 'done' });
 		} catch (err) {
+			console.error(`[agent-job ${jobId}] failed:`, err);
 			jobs.set(jobId, { id: jobId, status: 'error', error: String(err) });
 		}
 	})();

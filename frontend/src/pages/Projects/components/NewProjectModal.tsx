@@ -10,7 +10,6 @@ interface NewProjectModalProps {
 
 export function NewProjectModal({ onClose, onCreate }: NewProjectModalProps) {
 	const [name, setName] = useState('');
-	const [description, setDescription] = useState('');
 	const [type, setType] = useState<ProjectType>('professional');
 	const [loading, setLoading] = useState(false);
 
@@ -18,7 +17,7 @@ export function NewProjectModal({ onClose, onCreate }: NewProjectModalProps) {
 		e.preventDefault();
 		if (!name.trim()) return;
 		setLoading(true);
-		await onCreate({ name: name.trim(), description: description.trim(), type });
+		await onCreate({ name: name.trim(), description: '', type });
 		setLoading(false);
 	};
 
