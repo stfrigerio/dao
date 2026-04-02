@@ -133,9 +133,6 @@ export function ProjectsPage() {
 									{project.type}
 								</span>
 							</div>
-							{project.description && (
-								<p className={styles.cardDescription}>{project.description}</p>
-							)}
 							<div className={styles.cardFooter}>
 								<span className={styles.cardDate}>
 									{new Date(project.updatedAt).toLocaleDateString()}

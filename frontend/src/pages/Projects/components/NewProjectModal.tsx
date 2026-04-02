@@ -46,17 +46,6 @@ export function NewProjectModal({ onClose, onCreate }: NewProjectModalProps) {
 					</div>
 
 					<div className={styles.field}>
-						<label className={styles.label}>Description</label>
-						<textarea
-							className={styles.textarea}
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							placeholder="What is this project about?"
-							rows={3}
-						/>
-					</div>
-
-					<div className={styles.field}>
 						<label className={styles.label}>Type</label>
 						<div className={styles.typeToggle}>
 							<button

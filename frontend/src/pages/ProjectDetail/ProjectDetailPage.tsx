@@ -68,9 +68,6 @@ export function ProjectDetailPage() {
 							{project.type}
 						</span>
 					</div>
-					{project.description && (
-						<p className={styles.description}>{project.description}</p>
-					)}
 				</div>
 				<button
 					className={styles.deleteButton}

@@ -372,10 +372,15 @@ function runClaude(prompt: string): Promise<string> {
 
 		proc.on('close', (code: number | null) => {
 			if (code === 0) resolve(stdout.trim());
-			else reject(new Error(`claude exited ${code}: ${stderr.slice(0, 300)}`));
+			else reject(new Error(`claude exited ${code}: ${stderr.slice(0, 500)}`));
 		});
 
 		proc.on('error', reject);
+
+		proc.stdin.on('error', (err) => {
+			// EPIPE = claude exited before we finished writing; the 'close' handler will reject with the real error
+			if ((err as NodeJS.ErrnoException).code !== 'EPIPE') reject(err);
+		});
 
 		proc.stdin.write(prompt);
 		proc.stdin.end();
