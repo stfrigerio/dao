@@ -8,8 +8,9 @@ import { Extension } from '@tiptap/core';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown, type MarkdownStorage } from 'tiptap-markdown';
-import { Plugin } from 'prosemirror-state';
+import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
+import { DOMParser as PmDOMParser } from 'prosemirror-model';
 import styles from './DocEditor.module.css';
 
 export interface DocEditorHandle {
@@ -107,7 +108,26 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(function Do
 	const editor = useEditor({
 		extensions: [
 			StarterKit,
-			Markdown.configure({ html: false, tightLists: true, transformPastedText: true }),
+			Markdown.configure({ html: false, tightLists: true }),
+			Extension.create({
+				name: 'markdownPaste',
+				addProseMirrorPlugins() {
+					const editor = this.editor;
+					return [new Plugin({
+						key: new PluginKey('markdownPaste'),
+						props: {
+							clipboardTextParser(text, context, plainText) {
+								if (plainText) return null;
+								const md = (editor.storage as unknown as { markdown: MarkdownStorage }).markdown;
+								const html = md.parser.parse(text);
+								const dom = document.createElement('div');
+								dom.innerHTML = html;
+								return PmDOMParser.fromSchema(editor.schema).parseSlice(dom, { preserveWhitespace: true, context });
+							},
+						},
+					})];
+				},
+			}),
 			Table.configure({ resizable: false }),
 			TableRow,
 			TableHeader,
