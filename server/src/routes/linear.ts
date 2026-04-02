@@ -239,14 +239,31 @@ router.post('/linear/webhook', async (req, res) => {
 			const [task] = await db.select().from(tasks).where(eq(tasks.linearIssueId, data.id));
 			if (!task) { res.json({ ok: true }); return; }
 
-			// State change → update completion
+			// State change
 			if (updatedFrom?.stateId !== undefined && data.state) {
-				const completed = data.state.type === 'completed';
-				if (task.completed !== completed) {
-					await db.update(tasks).set({ completed, updatedAt: new Date() }).where(eq(tasks.id, task.id));
-					const siblingTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, task.objectiveId));
-					const allDone = siblingTasks.every((t) => (t.id === task.id ? completed : t.completed));
-					await db.update(objectives).set({ completed: allDone, updatedAt: new Date() }).where(eq(objectives.id, task.objectiveId));
+				// Cancelled in Linear → delete task in dao
+				if (data.state.type === 'canceled') {
+					const objId = task.objectiveId;
+					await db.delete(tasks).where(eq(tasks.id, task.id));
+					// Also delete subtasks
+					await db.delete(tasks).where(eq(tasks.parentTaskId, task.id));
+					// Recalculate objective completion
+					const remaining = await db.select().from(tasks).where(eq(tasks.objectiveId, objId));
+					if (remaining.length === 0) {
+						await db.delete(objectives).where(eq(objectives.id, objId));
+					} else {
+						const allDone = remaining.filter((t) => t.parentTaskId === null).every((t) => t.completed);
+						await db.update(objectives).set({ completed: allDone, updatedAt: new Date() }).where(eq(objectives.id, objId));
+					}
+				} else {
+					// Other state changes → update completion
+					const completed = data.state.type === 'completed';
+					if (task.completed !== completed) {
+						await db.update(tasks).set({ completed, updatedAt: new Date() }).where(eq(tasks.id, task.id));
+						const siblingTasks = await db.select().from(tasks).where(eq(tasks.objectiveId, task.objectiveId));
+						const allDone = siblingTasks.every((t) => (t.id === task.id ? completed : t.completed));
+						await db.update(objectives).set({ completed: allDone, updatedAt: new Date() }).where(eq(objectives.id, task.objectiveId));
+					}
 				}
 			}
 
@@ -254,12 +271,20 @@ router.post('/linear/webhook', async (req, res) => {
 			if (updatedFrom?.title !== undefined && data.title && task.name !== data.title) {
 				await db.update(tasks).set({ name: data.title, updatedAt: new Date() }).where(eq(tasks.id, task.id));
 			}
-
 		}
 
-		// Issue deleted in Linear → delete task in dao
+		// Issue deleted/removed in Linear → delete task in dao
 		if (type === 'Issue' && action === 'remove' && data?.id) {
-			await db.delete(tasks).where(eq(tasks.linearIssueId, data.id));
+			const [task] = await db.select().from(tasks).where(eq(tasks.linearIssueId, data.id));
+			if (task) {
+				const objId = task.objectiveId;
+				await db.delete(tasks).where(eq(tasks.id, task.id));
+				await db.delete(tasks).where(eq(tasks.parentTaskId, task.id));
+				const remaining = await db.select().from(tasks).where(eq(tasks.objectiveId, objId));
+				if (remaining.length === 0) {
+					await db.delete(objectives).where(eq(objectives.id, objId));
+				}
+			}
 		}
 
 		res.json({ ok: true });
