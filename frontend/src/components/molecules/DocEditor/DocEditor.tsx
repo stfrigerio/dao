@@ -107,7 +107,7 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(function Do
 	const editor = useEditor({
 		extensions: [
 			StarterKit,
-			Markdown.configure({ html: false, tightLists: true }),
+			Markdown.configure({ html: false, tightLists: true, transformPastedText: true }),
 			Table.configure({ resizable: false }),
 			TableRow,
 			TableHeader,
