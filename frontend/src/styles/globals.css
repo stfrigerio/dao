@@ -39,6 +39,8 @@ body::after {
 		);
 	pointer-events: none;
 	z-index: 9999;
+	will-change: transform;
+	contain: strict;
 }
 
 code {
@@ -145,5 +147,16 @@ p {
 	}
 	h3 {
 		font-size: var(--font-size-lg);
+	}
+}
+
+/* Kill expensive effects for users who prefer reduced motion or weak GPUs */
+@media (prefers-reduced-motion: reduce) {
+	body::after {
+		display: none;
+	}
+
+	body {
+		background-image: none;
 	}
 }
