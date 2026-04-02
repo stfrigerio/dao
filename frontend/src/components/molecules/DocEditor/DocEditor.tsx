@@ -10,7 +10,6 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown, type MarkdownStorage } from 'tiptap-markdown';
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
-import { DOMParser as PmDOMParser } from 'prosemirror-model';
 import styles from './DocEditor.module.css';
 
 export interface DocEditorHandle {
@@ -112,17 +111,23 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(function Do
 			Extension.create({
 				name: 'markdownPaste',
 				addProseMirrorPlugins() {
-					const editor = this.editor;
+					const tiptapEditor = this.editor;
 					return [new Plugin({
 						key: new PluginKey('markdownPaste'),
 						props: {
-							clipboardTextParser(text, context, plainText) {
-								if (plainText) return null;
-								const md = (editor.storage as unknown as { markdown: MarkdownStorage }).markdown;
-								const html = md.parser.parse(text);
-								const dom = document.createElement('div');
-								dom.innerHTML = html;
-								return PmDOMParser.fromSchema(editor.schema).parseSlice(dom, { preserveWhitespace: true, context });
+							handlePaste(view, event) {
+								const text = event.clipboardData?.getData('text/plain');
+								if (!text) return false;
+								if (!/^#{1,6}\s/m.test(text)) return false;
+								event.preventDefault();
+								const isEmpty = view.state.doc.textContent.trim() === '';
+								if (isEmpty) {
+									tiptapEditor.commands.setContent(text);
+								} else {
+									const { from, to } = view.state.selection;
+									tiptapEditor.commands.insertContentAt({ from, to }, text);
+								}
+								return true;
 							},
 						},
 					})];
