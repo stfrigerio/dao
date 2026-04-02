@@ -19,7 +19,7 @@ function applyPalette(palette: Palette) {
 }
 
 // Apply immediately at module load (before React renders)
-const stored = (localStorage.getItem(STORAGE_KEY) as Palette) || 'amber';
+const stored = (localStorage.getItem(STORAGE_KEY) as Palette) || 'white';
 applyPalette(stored);
 
 export const useThemeStore = create<ThemeState>()(

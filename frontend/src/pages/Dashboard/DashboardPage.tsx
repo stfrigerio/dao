@@ -58,11 +58,6 @@ export function DashboardPage() {
 										{project.type}
 									</span>
 								</div>
-								{project.description && (
-									<p className={styles.projectDescription}>
-										{project.description}
-									</p>
-								)}
 							</Link>
 						))}
 					</div>
