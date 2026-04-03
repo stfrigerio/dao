@@ -107,27 +107,23 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(function Do
 	const editor = useEditor({
 		extensions: [
 			StarterKit,
-			Markdown.configure({ html: false, tightLists: true }),
+			Markdown.configure({ html: false, tightLists: true, transformPastedText: true }),
 			Extension.create({
-				name: 'markdownPaste',
+				name: 'markdownPasteBlock',
+				priority: 1000,
 				addProseMirrorPlugins() {
 					const tiptapEditor = this.editor;
 					return [new Plugin({
-						key: new PluginKey('markdownPaste'),
+						key: new PluginKey('markdownPasteBlock'),
 						props: {
-							handlePaste(view, event) {
-								const text = event.clipboardData?.getData('text/plain');
-								if (!text) return false;
-								if (!/^#{1,6}\s/m.test(text)) return false;
-								event.preventDefault();
-								const isEmpty = view.state.doc.textContent.trim() === '';
-								if (isEmpty) {
-									tiptapEditor.commands.setContent(text);
-								} else {
-									const { from, to } = view.state.selection;
-									tiptapEditor.commands.insertContentAt({ from, to }, text);
-								}
-								return true;
+							clipboardTextParser(text, context, plainText) {
+								if (plainText) return null;
+								if (!/^#{1,6}\s|^>\s|^[-*]\s|^\d+\.\s/m.test(text)) return null;
+								// Parse as full block markdown, not inline
+								const html = tiptapEditor.storage.markdown.parser.parse(text);
+								const dom = document.createElement('div');
+								dom.innerHTML = html;
+								return PmDOMParser.fromSchema(tiptapEditor.schema).parseSlice(dom, { preserveWhitespace: true, context });
 							},
 						},
 					})];

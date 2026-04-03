@@ -24,6 +24,7 @@ export interface Project {
 	status: ProjectStatus;
 	ownerId: number | null;
 	linearApiKey: string | null;
+	linearProjectId: string | null;
 	currentPhaseUuid: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -60,7 +61,7 @@ export interface Objective {
 	description: string | null;
 	orderIndex: number;
 	completed: boolean;
-	linearProjectId: string | null;
+	linearMilestoneId: string | null;
 	createdAt: string;
 	updatedAt: string;
 	// Computed

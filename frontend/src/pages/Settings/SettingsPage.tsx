@@ -47,11 +47,53 @@ export function SettingsPage() {
 	const [newPassword, setNewPassword] = useState('');
 	const [newRole, setNewRole] = useState<'admin' | 'member'>('member');
 
+	const [linearKey, setLinearKey] = useState('');
+	const [linearConnected, setLinearConnected] = useState(false);
+	const [linearSaving, setLinearSaving] = useState(false);
+
 	const isAdmin = user?.role === 'admin';
 
 	useEffect(() => {
 		if (isAdmin) loadUsers();
 	}, [isAdmin]);
+
+	// Check if Linear is connected by loading any project's key
+	useEffect(() => {
+		(async () => {
+			try {
+				const res = await fetch(`${API_BASE_URL}/projects`, { headers: getHeaders() }); // allow-fetch
+				if (!res.ok) return;
+				const projects = await res.json();
+				const connected = projects.some((p: any) => p.linearApiKey);
+				setLinearConnected(connected);
+			} catch {}
+		})();
+	}, []);
+
+	const handleLinearSave = async () => {
+		if (!linearKey.trim()) return;
+		setLinearSaving(true);
+		try {
+			// Validate the key first
+			const validateRes = await fetch(`${API_BASE_URL}/settings/linear`, { // allow-fetch
+				method: 'POST',
+				headers: getHeaders(),
+				body: JSON.stringify({ apiKey: linearKey.trim() }),
+			});
+			if (!validateRes.ok) {
+				const err = await validateRes.json().catch(() => ({}));
+				toast.error(err.error || 'Invalid API key');
+				return;
+			}
+			setLinearConnected(true);
+			setLinearKey('');
+			toast.success('Linear workspace connected');
+		} catch {
+			toast.error('Failed to connect Linear');
+		} finally {
+			setLinearSaving(false);
+		}
+	};
 
 	const loadUsers = async () => {
 		setLoading(true);
@@ -170,6 +212,35 @@ export function SettingsPage() {
 					))}
 				</div>
 			</section>
+
+			{isAdmin && (
+				<section className={styles.section}>
+					<h2 className={styles.sectionTitle}>Linear</h2>
+					{linearConnected ? (
+						<p className={styles.sectionDesc}>Workspace connected. All projects will sync to this Linear workspace.</p>
+					) : (
+						<>
+							<p className={styles.sectionDesc}>Connect a Linear workspace to enable issue sync across all projects.</p>
+							<div className={styles.formRow}>
+								<input
+									className={styles.input}
+									type="password"
+									placeholder="lin_api_..."
+									value={linearKey}
+									onChange={(e) => setLinearKey(e.target.value)}
+								/>
+								<button
+									className={styles.submitButton}
+									onClick={handleLinearSave}
+									disabled={linearSaving || !linearKey.trim()}
+								>
+									{linearSaving ? 'Connecting...' : 'Connect'}
+								</button>
+							</div>
+						</>
+					)}
+				</section>
+			)}
 
 			{isAdmin && (
 				<section className={styles.section}>

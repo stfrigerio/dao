@@ -319,7 +319,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 					</div>
 
 					{isExecutionPhase && project.linearApiKey && phaseObjectives.length > 0
-						&& !phaseObjectives.every((o) => o.linearProjectId) && (
+						&& !phaseObjectives.every((o) => o.linearMilestoneId) && (
 						<button
 							className={styles.generatePlanButton}
 							onClick={async () => {
@@ -516,7 +516,7 @@ export function PhasePanel({ phase, project }: PhasePanelProps) {
 											)}
 										</div>
 										{project.linearApiKey && (
-											obj.linearProjectId ? (
+											obj.linearMilestoneId ? (
 												<span
 													className={styles.syncedIcon}
 													title="Synced to Linear"

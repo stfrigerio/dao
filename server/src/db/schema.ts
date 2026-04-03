@@ -20,6 +20,7 @@ export const projects = pgTable('projects', {
 	status: text('status').notNull().default('active'), // 'active' | 'archived'
 	ownerId: integer('owner_id').references(() => users.id),
 	linearApiKey: text('linear_api_key'),
+	linearProjectId: text('linear_project_id'),
 	currentPhaseId: integer('current_phase_id'),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
@@ -62,7 +63,7 @@ export const objectives = pgTable('objectives', {
 	description: text('description'),
 	orderIndex: integer('order_index').notNull().default(0),
 	completed: boolean('completed').notNull().default(false),
-	linearProjectId: text('linear_project_id'),
+	linearMilestoneId: text('linear_milestone_id'),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
