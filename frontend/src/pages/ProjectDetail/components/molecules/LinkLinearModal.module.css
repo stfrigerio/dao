@@ -84,6 +84,12 @@
 	border-color: var(--color-border-focus);
 }
 
+.loadingText {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-secondary);
+	margin: 0;
+}
+
 .actions {
 	display: flex;
 	justify-content: flex-end;

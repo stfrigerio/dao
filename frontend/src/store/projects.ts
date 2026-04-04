@@ -32,7 +32,7 @@ interface ProjectState {
 	fetchMembers: (projectUuid: string) => Promise<void>;
 	addMember: (projectUuid: string, userId: number, role: string) => Promise<boolean>;
 	removeMember: (projectUuid: string, userId: number) => Promise<boolean>;
-	linkLinear: (projectUuid: string, apiKey: string) => Promise<boolean>;
+	linkLinear: (projectUuid: string, linearProjectId: string) => Promise<boolean>;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -226,16 +226,17 @@ export const useProjectStore = create<ProjectState>()(
 				return response.ok;
 			},
 
-			linkLinear: async (projectUuid, apiKey) => {
+			linkLinear: async (projectUuid, linearProjectId) => {
 				const response = await authFetch(`${API_BASE_URL}/projects/${projectUuid}/linear`, {
 					method: 'POST',
 					headers: getHeaders(),
-					body: JSON.stringify({ apiKey }),
+					body: JSON.stringify({ linearProjectId }),
 				});
 				if (!response.ok) return false;
-				const updated = await response.json();
 				set((state) => ({
-					items: state.items.map((p) => (p.uuid === projectUuid ? updated : p)),
+					items: state.items.map((p) =>
+						p.uuid === projectUuid ? { ...p, linearProjectId } : p
+					),
 				}));
 				return true;
 			},

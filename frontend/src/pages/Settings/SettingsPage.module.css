@@ -317,3 +317,60 @@
 .linearUrl:hover {
 	color: var(--color-primary);
 }
+
+.webhookRow {
+	margin-top: var(--spacing-lg);
+	padding-top: var(--spacing-lg);
+	border-top: 1px solid var(--color-border);
+}
+
+.webhookLabel {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-text-secondary);
+	display: block;
+	margin-bottom: var(--spacing-xs);
+}
+
+.webhookValue {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-sm);
+}
+
+.webhookCode {
+	flex: 1;
+	font-size: var(--font-size-sm);
+	font-family: var(--font-family-mono);
+	color: var(--color-text);
+	background-color: var(--color-background-tertiary);
+	padding: var(--spacing-sm) var(--spacing-md);
+	border-radius: var(--radius-md);
+	border: 1px solid var(--color-border);
+	user-select: all;
+}
+
+.copyButton {
+	background: none;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	padding: var(--spacing-sm);
+	display: flex;
+	align-items: center;
+	transition: all var(--transition-fast);
+}
+
+.copyButton:hover {
+	color: var(--color-primary);
+	border-color: var(--color-primary);
+}
+
+.webhookHint {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	margin: var(--spacing-xs) 0 0;
+	font-family: var(--font-family-mono);
+	letter-spacing: var(--letter-spacing-wide);
+}

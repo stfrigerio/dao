@@ -4,7 +4,7 @@ import { db } from '../db';
 import { projects, objectives, tasks, phases } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
 import {
-	getIssues, createIssue, createProject, createMilestone, getMilestoneColor,
+	getIssues, createIssue, createMilestone, getMilestoneColor,
 	createIssueInProject, updateIssueState, getLinearProjects, getIssuesByIds, getIssueStates,
 } from '../services/linear';
 
@@ -17,14 +17,6 @@ const splitTaskName = (name: string): { title: string; description: string | und
 	if (sep === -1) return { title: name, description: undefined };
 	return { title: name.slice(0, sep).trim(), description: name.slice(sep + 3).trim() };
 };
-
-/** Ensure the DAO project has a corresponding Linear project. Creates one if needed. */
-async function ensureLinearProject(project: typeof projects.$inferSelect): Promise<string> {
-	if (project.linearProjectId) return project.linearProjectId;
-	const linearProject = await createProject(project.linearApiKey!, project.name, project.description ?? undefined);
-	await db.update(projects).set({ linearProjectId: linearProject.id, updatedAt: new Date() }).where(eq(projects.id, project.id));
-	return linearProject.id;
-}
 
 /** Sync one objective: create milestone + issues for its tasks. */
 async function syncObjectiveToLinear(
@@ -116,9 +108,10 @@ router.post('/projects/:uuid/objectives/:objUuid/sync-linear', requireAuth, asyn
 	const [objective] = await db.select().from(objectives).where(eq(objectives.uuid, req.params['objUuid'] as string));
 	if (!objective) { res.status(404).json({ error: 'Objective not found' }); return; }
 
+	if (!project.linearProjectId) { res.status(400).json({ error: 'Project not linked to a Linear project. Link one first.' }); return; }
+
 	try {
-		const linearProjectId = await ensureLinearProject(project);
-		const result = await syncObjectiveToLinear(project.linearApiKey, linearProjectId, objective, objective.orderIndex);
+		const result = await syncObjectiveToLinear(project.linearApiKey, project.linearProjectId, objective, objective.orderIndex);
 		res.status(201).json(result);
 	} catch (err: any) {
 		res.status(500).json({ error: err.message || 'Failed to sync' });
@@ -137,13 +130,14 @@ router.post('/projects/:uuid/sync-execution-to-linear', requireAuth, async (req:
 
 	const objs = await db.select().from(objectives).where(eq(objectives.phaseId, executionPhase.id)).orderBy(objectives.orderIndex);
 
+	if (!project.linearProjectId) { res.status(400).json({ error: 'Project not linked to a Linear project. Link one first.' }); return; }
+
 	try {
-		const linearProjectId = await ensureLinearProject(project);
 		const results = [];
 		const errors = [];
 		for (let i = 0; i < objs.length; i++) {
 			try {
-				const result = await syncObjectiveToLinear(project.linearApiKey, linearProjectId, objs[i], i);
+				const result = await syncObjectiveToLinear(project.linearApiKey, project.linearProjectId, objs[i], i);
 				results.push({ objective: objs[i].name, ...result });
 			} catch (err: any) {
 				errors.push({ objective: objs[i].name, error: err.message });
@@ -319,15 +313,28 @@ router.post('/projects/:uuid/linear/reconcile', requireAuth, async (req: AuthReq
 	}
 });
 
-// POST /projects/:uuid/linear — link API key (per-project)
+// POST /projects/:uuid/linear — link project to a Linear project
 router.post('/projects/:uuid/linear', requireAuth, async (req: AuthRequest, res) => {
-	const { apiKey } = req.body;
-	if (!apiKey) { res.status(400).json({ error: 'apiKey required' }); return; }
-	const { validateApiKey } = await import('../services/linear');
-	const valid = await validateApiKey(apiKey);
-	if (!valid) { res.status(400).json({ error: 'Invalid API key' }); return; }
-	await db.update(projects).set({ linearApiKey: apiKey, updatedAt: new Date() }).where(eq(projects.uuid, req.params['uuid'] as string));
+	const { linearProjectId } = req.body;
+	if (!linearProjectId) { res.status(400).json({ error: 'linearProjectId required' }); return; }
+	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
+	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+	if (!project.linearApiKey) { res.status(400).json({ error: 'No Linear workspace connected. Configure in Settings first.' }); return; }
+	await db.update(projects).set({ linearProjectId, updatedAt: new Date() }).where(eq(projects.id, project.id));
 	res.json({ ok: true });
+});
+
+// GET /settings/linear/projects — list Linear projects from workspace
+router.get('/settings/linear/projects', requireAuth, async (_req: AuthRequest, res) => {
+	const allProjects = await db.select().from(projects);
+	const withKey = allProjects.find((p) => p.linearApiKey);
+	if (!withKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
+	try {
+		const linearProjects = await getLinearProjects(withKey.linearApiKey!);
+		res.json(linearProjects);
+	} catch (err: any) {
+		res.status(500).json({ error: err.message || 'Failed to fetch projects' });
+	}
 });
 
 // GET /settings/linear — check Linear connection status

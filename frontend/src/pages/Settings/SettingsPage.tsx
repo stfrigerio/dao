@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Copy, Check } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useToastStore } from '@/store/toast';
 import { useThemeStore, type Palette } from '@/store/theme';
@@ -50,6 +50,7 @@ export function SettingsPage() {
 	const [linearKey, setLinearKey] = useState('');
 	const [linearConnected, setLinearConnected] = useState(false);
 	const [linearSaving, setLinearSaving] = useState(false);
+	const [webhookCopied, setWebhookCopied] = useState(false);
 
 	const isAdmin = user?.role === 'admin';
 
@@ -237,19 +238,40 @@ export function SettingsPage() {
 				<section className={styles.section}>
 					<h2 className={styles.sectionTitle}>Linear</h2>
 					{linearConnected && linearWorkspace ? (
-						<div className={styles.linearConnected}>
-							<div>
-								<p className={styles.sectionDesc}>
-									Connected to <strong>{linearWorkspace.name}</strong>
-								</p>
-								<a href={linearWorkspace.url} target="_blank" rel="noopener noreferrer" className={styles.linearUrl}>
-									{linearWorkspace.url}
-								</a>
+						<>
+							<div className={styles.linearConnected}>
+								<div>
+									<p className={styles.sectionDesc}>
+										Connected to <strong>{linearWorkspace.name}</strong>
+									</p>
+									<a href={linearWorkspace.url} target="_blank" rel="noopener noreferrer" className={styles.linearUrl}>
+										{linearWorkspace.url}
+									</a>
+								</div>
+								<button className={styles.cancelButton} onClick={handleLinearUnlink}>
+									Unlink
+								</button>
 							</div>
-							<button className={styles.cancelButton} onClick={handleLinearUnlink}>
-								Unlink
-							</button>
-						</div>
+							<div className={styles.webhookRow}>
+								<label className={styles.webhookLabel}>Webhook URL</label>
+								<div className={styles.webhookValue}>
+									<code className={styles.webhookCode}>{`${window.location.origin}/api/linear/webhook`}</code>
+									<button
+										className={styles.copyButton}
+										onClick={() => {
+											navigator.clipboard.writeText(`${window.location.origin}/api/linear/webhook`);
+											setWebhookCopied(true);
+											setTimeout(() => setWebhookCopied(false), 2000);
+										}}
+									>
+										{webhookCopied ? <Check size={14} /> : <Copy size={14} />}
+									</button>
+								</div>
+								<p className={styles.webhookHint}>
+									Add this URL in Linear → Settings → API → Webhooks. Subscribe to Issue and Project events.
+								</p>
+							</div>
+						</>
 					) : (
 						<>
 							<p className={styles.sectionDesc}>Connect a Linear workspace to enable issue sync across all projects.</p>
