@@ -57,15 +57,19 @@ export function SettingsPage() {
 		if (isAdmin) loadUsers();
 	}, [isAdmin]);
 
-	// Check if Linear is connected by loading any project's key
+	const [linearWorkspace, setLinearWorkspace] = useState<{ name: string; url: string } | null>(null);
+
+	// Check Linear connection status
 	useEffect(() => {
 		(async () => {
 			try {
-				const res = await fetch(`${API_BASE_URL}/projects`, { headers: getHeaders() }); // allow-fetch
+				const res = await fetch(`${API_BASE_URL}/settings/linear`, { headers: getHeaders() }); // allow-fetch
 				if (!res.ok) return;
-				const projects = await res.json();
-				const connected = projects.some((p: any) => p.linearApiKey);
-				setLinearConnected(connected);
+				const data = await res.json();
+				if (data.connected) {
+					setLinearConnected(true);
+					setLinearWorkspace(data.workspace);
+				}
 			} catch {}
 		})();
 	}, []);
@@ -74,24 +78,40 @@ export function SettingsPage() {
 		if (!linearKey.trim()) return;
 		setLinearSaving(true);
 		try {
-			// Validate the key first
-			const validateRes = await fetch(`${API_BASE_URL}/settings/linear`, { // allow-fetch
+			const res = await fetch(`${API_BASE_URL}/settings/linear`, { // allow-fetch
 				method: 'POST',
 				headers: getHeaders(),
 				body: JSON.stringify({ apiKey: linearKey.trim() }),
 			});
-			if (!validateRes.ok) {
-				const err = await validateRes.json().catch(() => ({}));
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
 				toast.error(err.error || 'Invalid API key');
 				return;
 			}
+			const data = await res.json();
 			setLinearConnected(true);
+			setLinearWorkspace(data.workspace);
 			setLinearKey('');
 			toast.success('Linear workspace connected');
 		} catch {
 			toast.error('Failed to connect Linear');
 		} finally {
 			setLinearSaving(false);
+		}
+	};
+
+	const handleLinearUnlink = async () => {
+		try {
+			const res = await fetch(`${API_BASE_URL}/settings/linear`, { // allow-fetch
+				method: 'DELETE',
+				headers: getHeaders(),
+			});
+			if (!res.ok) { toast.error('Failed to unlink'); return; }
+			setLinearConnected(false);
+			setLinearWorkspace(null);
+			toast.success('Linear workspace unlinked');
+		} catch {
+			toast.error('Failed to unlink');
 		}
 	};
 
@@ -216,8 +236,20 @@ export function SettingsPage() {
 			{isAdmin && (
 				<section className={styles.section}>
 					<h2 className={styles.sectionTitle}>Linear</h2>
-					{linearConnected ? (
-						<p className={styles.sectionDesc}>Workspace connected. All projects will sync to this Linear workspace.</p>
+					{linearConnected && linearWorkspace ? (
+						<div className={styles.linearConnected}>
+							<div>
+								<p className={styles.sectionDesc}>
+									Connected to <strong>{linearWorkspace.name}</strong>
+								</p>
+								<a href={linearWorkspace.url} target="_blank" rel="noopener noreferrer" className={styles.linearUrl}>
+									{linearWorkspace.url}
+								</a>
+							</div>
+							<button className={styles.cancelButton} onClick={handleLinearUnlink}>
+								Unlink
+							</button>
+						</div>
 					) : (
 						<>
 							<p className={styles.sectionDesc}>Connect a Linear workspace to enable issue sync across all projects.</p>

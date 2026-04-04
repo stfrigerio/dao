@@ -330,15 +330,48 @@ router.post('/projects/:uuid/linear', requireAuth, async (req: AuthRequest, res)
 	res.json({ ok: true });
 });
 
-// POST /settings/linear — set Linear API key globally (applies to all projects)
+// GET /settings/linear — check Linear connection status
+router.get('/settings/linear', requireAuth, async (_req: AuthRequest, res) => {
+	const allProjects = await db.select().from(projects);
+	const withKey = allProjects.find((p) => p.linearApiKey);
+	if (!withKey) { res.json({ connected: false }); return; }
+	try {
+		const { LinearClient } = await import('@linear/sdk');
+		const client = new LinearClient({ apiKey: withKey.linearApiKey! });
+		const org = await client.organization;
+		res.json({
+			connected: true,
+			workspace: { name: org.name, url: `https://linear.app/${org.urlKey}` },
+		});
+	} catch {
+		res.json({ connected: true, workspace: null });
+	}
+});
+
+// POST /settings/linear — set Linear API key globally
 router.post('/settings/linear', requireAuth, async (req: AuthRequest, res) => {
 	const { apiKey } = req.body;
 	if (!apiKey) { res.status(400).json({ error: 'apiKey required' }); return; }
 	const { validateApiKey } = await import('../services/linear');
 	const valid = await validateApiKey(apiKey);
 	if (!valid) { res.status(400).json({ error: 'Invalid Linear API key' }); return; }
-	// Apply to all projects
 	await db.update(projects).set({ linearApiKey: apiKey, updatedAt: new Date() });
+	// Return workspace info
+	try {
+		const { LinearClient } = await import('@linear/sdk');
+		const client = new LinearClient({ apiKey });
+		const org = await client.organization;
+		res.json({ ok: true, workspace: { name: org.name, url: `https://linear.app/${org.urlKey}` } });
+	} catch {
+		res.json({ ok: true, workspace: null });
+	}
+});
+
+// DELETE /settings/linear — unlink Linear from all projects
+router.delete('/settings/linear', requireAuth, async (_req: AuthRequest, res) => {
+	await db.update(projects).set({ linearApiKey: null, linearProjectId: null, updatedAt: new Date() });
+	await db.update(objectives).set({ linearMilestoneId: null, updatedAt: new Date() }).where(isNotNull(objectives.linearMilestoneId));
+	await db.update(tasks).set({ linearIssueId: null, updatedAt: new Date() }).where(isNotNull(tasks.linearIssueId));
 	res.json({ ok: true });
 });
 
