@@ -3,7 +3,7 @@ import { eq, and, lt } from 'drizzle-orm';
 import { db } from '../db';
 import { projects, projectMembers, users, phases, objectives, documents } from '../db/schema';
 import { requireAuth, type AuthRequest } from '../middleware/auth';
-import { validateApiKey } from '../services/linear';
+
 
 const router = Router();
 
@@ -276,31 +276,6 @@ router.delete('/:uuid/members/:userId', requireAuth, async (req: AuthRequest, re
 			)
 		);
 	res.json({ ok: true });
-});
-
-// POST /projects/:uuid/linear — link Linear workspace
-router.post('/:uuid/linear', requireAuth, async (req: AuthRequest, res) => {
-	const uuid = req.params['uuid'] as string;
-	const { apiKey } = req.body;
-	if (!apiKey) {
-		res.status(400).json({ error: 'apiKey required' });
-		return;
-	}
-	const valid = await validateApiKey(apiKey);
-	if (!valid) {
-		res.status(400).json({ error: 'Invalid Linear API key' });
-		return;
-	}
-	const [project] = await db
-		.update(projects)
-		.set({ linearApiKey: apiKey, updatedAt: new Date() })
-		.where(eq(projects.uuid, uuid))
-		.returning();
-	if (!project) {
-		res.status(404).json({ error: 'Project not found' });
-		return;
-	}
-	res.json(project);
 });
 
 export default router;
