@@ -323,6 +323,23 @@ router.post('/projects/:uuid/linear/reconcile', requireAuth, async (req: AuthReq
 	}
 });
 
+// POST /projects/:uuid/linear/unlink — unlink project from Linear project
+router.post('/projects/:uuid/linear/unlink', requireAuth, async (req: AuthRequest, res) => {
+	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
+	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
+	await db.update(projects).set({ linearProjectId: null, updatedAt: new Date() }).where(eq(projects.id, project.id));
+	// Clear sync mappings for this project's objectives/tasks
+	const projectPhases = await db.select().from(phases).where(eq(phases.projectId, project.id));
+	for (const phase of projectPhases) {
+		const objs = await db.select().from(objectives).where(eq(objectives.phaseId, phase.id));
+		for (const obj of objs) {
+			await db.update(tasks).set({ linearIssueId: null, updatedAt: new Date() }).where(eq(tasks.objectiveId, obj.id));
+		}
+		await db.update(objectives).set({ linearMilestoneId: null, updatedAt: new Date() }).where(eq(objectives.phaseId, phase.id));
+	}
+	res.json({ ok: true });
+});
+
 // POST /projects/:uuid/linear — link project to a Linear project
 router.post('/projects/:uuid/linear', requireAuth, async (req: AuthRequest, res) => {
 	const { linearProjectId } = req.body;
