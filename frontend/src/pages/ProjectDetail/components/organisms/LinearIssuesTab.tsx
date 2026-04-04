@@ -21,27 +21,19 @@ export function LinearIssuesTab({ project }: LinearIssuesTabProps) {
 	const [reconciling, setReconciling] = useState(false);
 	const projectIssues = issues[project.uuid] || [];
 
-	const isLinked = project.linearApiKey && project.linearProjectId;
-
 	useEffect(() => {
-		if (isLinked) {
+		if (project.linearProjectId) {
 			fetchIssues(project.uuid);
 		}
-	}, [project.uuid, isLinked, fetchIssues]);
+	}, [project.uuid, project.linearProjectId, fetchIssues]);
 
-	if (!isLinked) {
+	if (!project.linearProjectId) {
 		return (
 			<div className={styles.emptyState}>
-				{!project.linearApiKey ? (
-					<p className={styles.emptyText}>Connect a Linear workspace in Settings first.</p>
-				) : (
-					<>
-						<p className={styles.emptyText}>No Linear project linked yet.</p>
-						<button className={styles.linkButton} onClick={() => setShowLinkModal(true)}>
-							Link Linear Project
-						</button>
-					</>
-				)}
+				<p className={styles.emptyText}>No Linear project linked yet.</p>
+				<button className={styles.linkButton} onClick={() => setShowLinkModal(true)}>
+					Link Linear Project
+				</button>
 				{showLinkModal && (
 					<LinkLinearModal project={project} onClose={() => setShowLinkModal(false)} />
 				)}

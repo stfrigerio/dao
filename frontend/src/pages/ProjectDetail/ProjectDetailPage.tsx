@@ -39,10 +39,10 @@ export function ProjectDetailPage() {
 
 	// Pull task statuses from Linear on load
 	useEffect(() => {
-		if (project?.linearApiKey && uuid) {
+		if (project?.linearProjectId && uuid) {
 			pullStatus(uuid);
 		}
-	}, [project?.linearApiKey, uuid, pullStatus]);
+	}, [project?.linearProjectId, uuid, pullStatus]);
 
 	const handleDelete = async () => {
 		if (!confirm(`Delete project "${project?.name}"?`)) return;

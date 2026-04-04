@@ -12,6 +12,12 @@ const router = Router();
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
+/** Get the workspace-level Linear API key (stored on any project). */
+async function getWorkspaceApiKey(): Promise<string | null> {
+	const allProjects = await db.select({ linearApiKey: projects.linearApiKey }).from(projects);
+	return allProjects.find((p) => p.linearApiKey)?.linearApiKey ?? null;
+}
+
 const splitTaskName = (name: string): { title: string; description: string | undefined } => {
 	const sep = name.indexOf(' — ');
 	if (sep === -1) return { title: name, description: undefined };
@@ -78,9 +84,10 @@ async function syncObjectiveToLinear(
 router.get('/projects/:uuid/linear/issues', requireAuth, async (req: AuthRequest, res) => {
 	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
 	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
-	if (!project.linearApiKey) { res.status(400).json({ error: 'Not linked to Linear' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
 	try {
-		res.json(await getIssues(project.linearApiKey));
+		res.json(await getIssues(apiKey));
 	} catch (err: any) {
 		res.status(500).json({ error: err.message || 'Failed to fetch issues' });
 	}
@@ -90,11 +97,12 @@ router.get('/projects/:uuid/linear/issues', requireAuth, async (req: AuthRequest
 router.post('/projects/:uuid/linear/issues', requireAuth, async (req: AuthRequest, res) => {
 	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
 	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
-	if (!project.linearApiKey) { res.status(400).json({ error: 'Not linked to Linear' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
 	const { title, description } = req.body;
 	if (!title) { res.status(400).json({ error: 'title required' }); return; }
 	try {
-		res.status(201).json(await createIssue(project.linearApiKey, title, description));
+		res.status(201).json(await createIssue(apiKey, title, description));
 	} catch (err: any) {
 		res.status(500).json({ error: err.message });
 	}
@@ -104,14 +112,14 @@ router.post('/projects/:uuid/linear/issues', requireAuth, async (req: AuthReques
 router.post('/projects/:uuid/objectives/:objUuid/sync-linear', requireAuth, async (req: AuthRequest, res) => {
 	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
 	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
-	if (!project.linearApiKey) { res.status(400).json({ error: 'Not linked to Linear' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
+	if (!project.linearProjectId) { res.status(400).json({ error: 'Project not linked to a Linear project. Link one first.' }); return; }
 	const [objective] = await db.select().from(objectives).where(eq(objectives.uuid, req.params['objUuid'] as string));
 	if (!objective) { res.status(404).json({ error: 'Objective not found' }); return; }
 
-	if (!project.linearProjectId) { res.status(400).json({ error: 'Project not linked to a Linear project. Link one first.' }); return; }
-
 	try {
-		const result = await syncObjectiveToLinear(project.linearApiKey, project.linearProjectId, objective, objective.orderIndex);
+		const result = await syncObjectiveToLinear(apiKey, project.linearProjectId, objective, objective.orderIndex);
 		res.status(201).json(result);
 	} catch (err: any) {
 		res.status(500).json({ error: err.message || 'Failed to sync' });
@@ -122,7 +130,9 @@ router.post('/projects/:uuid/objectives/:objUuid/sync-linear', requireAuth, asyn
 router.post('/projects/:uuid/sync-execution-to-linear', requireAuth, async (req: AuthRequest, res) => {
 	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
 	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
-	if (!project.linearApiKey) { res.status(400).json({ error: 'Not linked to Linear' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
+	if (!project.linearProjectId) { res.status(400).json({ error: 'Project not linked to a Linear project. Link one first.' }); return; }
 
 	const projectPhases = await db.select().from(phases).where(eq(phases.projectId, project.id));
 	const executionPhase = projectPhases.find((p) => p.name.toLowerCase().includes('execution'));
@@ -130,14 +140,12 @@ router.post('/projects/:uuid/sync-execution-to-linear', requireAuth, async (req:
 
 	const objs = await db.select().from(objectives).where(eq(objectives.phaseId, executionPhase.id)).orderBy(objectives.orderIndex);
 
-	if (!project.linearProjectId) { res.status(400).json({ error: 'Project not linked to a Linear project. Link one first.' }); return; }
-
 	try {
 		const results = [];
 		const errors = [];
 		for (let i = 0; i < objs.length; i++) {
 			try {
-				const result = await syncObjectiveToLinear(project.linearApiKey, project.linearProjectId, objs[i], i);
+				const result = await syncObjectiveToLinear(apiKey, project.linearProjectId, objs[i], i);
 				results.push({ objective: objs[i].name, ...result });
 			} catch (err: any) {
 				errors.push({ objective: objs[i].name, error: err.message });
@@ -156,7 +164,8 @@ router.post('/projects/:uuid/sync-execution-to-linear', requireAuth, async (req:
 router.post('/projects/:uuid/linear/pull-status', requireAuth, async (req: AuthRequest, res) => {
 	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
 	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
-	if (!project.linearApiKey) { res.status(400).json({ error: 'Not linked to Linear' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
 
 	try {
 		const projectPhases = await db.select().from(phases).where(eq(phases.projectId, project.id));
@@ -171,7 +180,7 @@ router.post('/projects/:uuid/linear/pull-status', requireAuth, async (req: AuthR
 		}
 		if (syncedTasks.length === 0) { res.json({ updated: 0 }); return; }
 
-		const states = await getIssueStates(project.linearApiKey, syncedTasks.map((t) => t.linearIssueId!));
+		const states = await getIssueStates(apiKey, syncedTasks.map((t) => t.linearIssueId!));
 		let updated = 0;
 		for (const task of syncedTasks) {
 			const state = states[task.linearIssueId!];
@@ -267,14 +276,15 @@ router.post('/linear/webhook', async (req, res) => {
 router.post('/projects/:uuid/linear/reconcile', requireAuth, async (req: AuthRequest, res) => {
 	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
 	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
-	if (!project.linearApiKey) { res.status(400).json({ error: 'Not linked to Linear' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
 
 	try {
 		const projectPhases = await db.select().from(phases).where(eq(phases.projectId, project.id));
 		const phaseIds = projectPhases.map((p) => p.id);
 
 		// Check if Linear project still exists
-		const linearProjects = await getLinearProjects(project.linearApiKey);
+		const linearProjects = await getLinearProjects(apiKey);
 		const liveProjectIds = new Set(linearProjects.map((p) => p.id));
 		if (project.linearProjectId && !liveProjectIds.has(project.linearProjectId)) {
 			await db.update(projects).set({ linearProjectId: null, updatedAt: new Date() }).where(eq(projects.id, project.id));
@@ -293,7 +303,7 @@ router.post('/projects/:uuid/linear/reconcile', requireAuth, async (req: AuthReq
 
 		let deletedTasks = 0;
 		if (allSyncedTasks.length > 0) {
-			const liveIssues = await getIssuesByIds(project.linearApiKey, allSyncedTasks.map((t) => t.linearIssueId!));
+			const liveIssues = await getIssuesByIds(apiKey, allSyncedTasks.map((t) => t.linearIssueId!));
 			const liveIssueIds = new Set(liveIssues.map((i) => i.id));
 
 			for (const task of allSyncedTasks.filter((t) => !liveIssueIds.has(t.linearIssueId!))) {
@@ -317,21 +327,20 @@ router.post('/projects/:uuid/linear/reconcile', requireAuth, async (req: AuthReq
 router.post('/projects/:uuid/linear', requireAuth, async (req: AuthRequest, res) => {
 	const { linearProjectId } = req.body;
 	if (!linearProjectId) { res.status(400).json({ error: 'linearProjectId required' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected. Configure in Settings first.' }); return; }
 	const [project] = await db.select().from(projects).where(eq(projects.uuid, req.params['uuid'] as string));
 	if (!project) { res.status(404).json({ error: 'Project not found' }); return; }
-	if (!project.linearApiKey) { res.status(400).json({ error: 'No Linear workspace connected. Configure in Settings first.' }); return; }
 	await db.update(projects).set({ linearProjectId, updatedAt: new Date() }).where(eq(projects.id, project.id));
 	res.json({ ok: true });
 });
 
 // GET /settings/linear/projects — list Linear projects from workspace
 router.get('/settings/linear/projects', requireAuth, async (_req: AuthRequest, res) => {
-	const allProjects = await db.select().from(projects);
-	const withKey = allProjects.find((p) => p.linearApiKey);
-	if (!withKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.status(400).json({ error: 'No Linear workspace connected' }); return; }
 	try {
-		const linearProjects = await getLinearProjects(withKey.linearApiKey!);
-		res.json(linearProjects);
+		res.json(await getLinearProjects(apiKey));
 	} catch (err: any) {
 		res.status(500).json({ error: err.message || 'Failed to fetch projects' });
 	}
@@ -339,12 +348,11 @@ router.get('/settings/linear/projects', requireAuth, async (_req: AuthRequest, r
 
 // GET /settings/linear — check Linear connection status
 router.get('/settings/linear', requireAuth, async (_req: AuthRequest, res) => {
-	const allProjects = await db.select().from(projects);
-	const withKey = allProjects.find((p) => p.linearApiKey);
-	if (!withKey) { res.json({ connected: false }); return; }
+	const apiKey = await getWorkspaceApiKey();
+	if (!apiKey) { res.json({ connected: false }); return; }
 	try {
 		const { LinearClient } = await import('@linear/sdk');
-		const client = new LinearClient({ apiKey: withKey.linearApiKey! });
+		const client = new LinearClient({ apiKey });
 		const org = await client.organization;
 		res.json({
 			connected: true,
